@@ -131,7 +131,7 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 详细例子查看[examples](examples)
 
 #### export to pb
-查看[examples\classification\export.py](examples\classification\export.py)例子
+查看[examples\classification\export.py](examples/classification/export.py)例子
 
 **Reference**  
 1. [Transformers: State-of-the-art Natural Language Processing for TensorFlow 2.0 and PyTorch. ](https://github.com/huggingface/transformers)
