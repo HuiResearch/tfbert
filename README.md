@@ -59,6 +59,8 @@ trainer支持的功能MultiDeviceTrainer也支持，推荐就用MultiDeviceTrain
 ```python
 import tensorflow.compat.v1 as tf
 from textToy import MultiDeviceTrainer
+from textToy.optimizer import create_optimizer
+
 # 创建dataset
 def create_dataset(set_type):
     ...
@@ -95,7 +97,14 @@ trainer = MultiDeviceTrainer('bert', output_types, output_shapes, device='gpu')
 trainer.build_model(get_model_fn())
 
 # 训练的话创建train_op
-train_op = ...
+# 使用多卡训练器MultiDeviceTrainer时，创建train_op需要传入trainer的loss和grads_and_vars
+# 因为这里的loss和梯度在训练器中已经自动求多卡的平均了。
+train_op = create_optimizer(
+    trainer.loss,
+    init_lr=learning_rate,
+    num_train_steps=train_steps * epochs,
+    num_warmup_steps=int(train_steps * epochs * 0.1),
+    grads_and_vars=trainer.grads_and_vars)   
 
 # 配置优化节点
 trainer.compile(train_op)
