@@ -18,7 +18,7 @@ config、tokenizer参考的transformers的实现。
 
 内置有自定义的Trainer、MultiDeviceTrainer，具体使用下边会介绍。
 
-目前内置 [文本分类](examples\classification)、[文本多标签分类](examples\multi_label)、[命名实体识别](examples\ner)例子。
+目前内置 [文本分类](examples/classification)、[文本多标签分类](examples/multi_label)、[命名实体识别](examples/ner)例子。
 
 内置的几个例子的数据处理代码都支持多进程处理，实现方式参考的transformers。
 ## 支持模型
