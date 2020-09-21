@@ -21,6 +21,8 @@ config、tokenizer参考的transformers的实现。
 目前内置 [文本分类](examples/classification)、[文本多标签分类](examples/multi_label)、[命名实体识别](examples/ner)例子。
 
 内置的几个例子的数据处理代码都支持多进程处理，实现方式参考的transformers。
+
+随机种子设置还有问题，GPU跑出结果一直在变，还想向知道的大佬请教下。
 ## 支持模型
 
 bert、electra、albert、nezha、wobert
