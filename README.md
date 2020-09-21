@@ -1,6 +1,6 @@
 # textToy
 - 基于tensorflow 1.14 的bert系列预训练模型工具
-- 支持多GPU训练，支持pb模型导出
+- 支持多GPU训练，支持pb模型导出，自动剔除adam参数
 - 采用dataset 和 string handle配合，可以灵活训练预测
 
 ## 背景
