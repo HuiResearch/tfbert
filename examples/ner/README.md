@@ -1,6 +1,6 @@
 # 实体识别使用例子
-- [run_ptm.py](examples\ner\run_ptm.py) 是预训练模型例子
-- [export.py](examples\ner\export.py) 导出pb的样例
+- [run_ptm.py](examples/ner/run_ptm.py) 是预训练模型例子
+- [export.py](examples/ner/export.py) 导出pb的样例
 
 ## 使用
 单卡训练
