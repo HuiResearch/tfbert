@@ -136,7 +136,7 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 
 ## **更新记录**
 
-- 2020年9月23日 增加梯度累积，采用trainer.backward(), trainer.zero_grad(), trainer.train_step() 一同进行训练。参考pytorch训练方式。
+- 2020年9月23日 增加梯度累积，采用trainer.backward(), trainer.zero_grad(), trainer.train_step() 一同进行训练，参考pytorch训练方式。
 - 2020年9月21日 第一次上传，支持模型bert、albert、electra、nezha、wobert。
 
 **Reference**  
