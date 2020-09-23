@@ -37,8 +37,8 @@ jieba
 
 import tensorflow.compat.v1 as tf
 
-## 使用说明
-#### Config 和 Tokenizer
+## **使用说明**
+#### **Config 和 Tokenizer**
 使用方法和transformers一样
 ```python
 from textToy import BertTokenizer, BertConfig
@@ -52,7 +52,7 @@ inputs = tokenizer.encode(
 config.save_pretrained("save_path")
 tokenizer.save_pretrained("save_path")
 ```
-#### Trainer
+#### **Trainer**
 ```python
 import tensorflow.compat.v1 as tf
 from textToy import Trainer
@@ -130,8 +130,14 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 ```
 详细例子查看[examples](examples)
 
-#### export to pb
+#### **export to pb**
 查看[examples\classification\export.py](examples/classification/export.py)例子
+
+
+## **更新记录**
+
+- 2020年9月23日 增加梯度累积，采用trainer.backward(), trainer.zero_grad(), trainer.train_step() 一同进行训练。参考pytorch训练方式。
+- 2020年9月21日 第一次上传，支持模型bert、albert、electra、nezha、wobert。
 
 **Reference**  
 1. [Transformers: State-of-the-art Natural Language Processing for TensorFlow 2.0 and PyTorch. ](https://github.com/huggingface/transformers)

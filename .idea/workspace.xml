@@ -25,23 +25,9 @@
     </select>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="update README.md">
+    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="增加梯度累积功能，修改优化器，去除冗余代码">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/classification/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/classification/export.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/export.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/classification/predict.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/predict.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/classification/run_cnn.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/run_cnn.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/classification/run_ptm.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/run_ptm.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/multi_label/run_ptm.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/multi_label/run_ptm.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/ner/export.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/ner/export.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/ner/run_ptm.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/ner/run_ptm.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/textToy/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/textToy/data/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/data/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/textToy/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/optimizer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/textToy/ptm/ckpt_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/ptm/ckpt_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/textToy/serving.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/serving.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/textToy/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/trainer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -98,7 +84,7 @@
       <updated>1600667842511</updated>
       <workItem from="1600667843882" duration="11793000" />
       <workItem from="1600743834154" duration="585000" />
-      <workItem from="1600783010508" duration="6394000" />
+      <workItem from="1600783010508" duration="8329000" />
     </task>
     <task id="LOCAL-00001" summary="update README.md">
       <created>1600743913116</created>
@@ -114,7 +100,14 @@
       <option name="project" value="LOCAL" />
       <updated>1600744380009</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="增加梯度累积功能，修改优化器，去除冗余代码">
+      <created>1600830344868</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1600830344868</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -146,20 +139,21 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="update README.md" />
-    <option name="LAST_COMMIT_MESSAGE" value="update README.md" />
+    <MESSAGE value="增加梯度累积功能，修改优化器，去除冗余代码" />
+    <option name="LAST_COMMIT_MESSAGE" value="增加梯度累积功能，修改优化器，去除冗余代码" />
   </component>
   <component name="WindowStateProjectService">
     <state x="782" y="415" key="GitRewordDialog" timestamp="1600744225425">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="782" y="415" key="GitRewordDialog/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600744225425" />
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1600744382831">
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1600830346138">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600744382831" />
-    <state x="1920" y="87" width="1424" height="1027" maximized="true" key="dock-window-1" timestamp="1600676977029">
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600830346138" />
+    <state x="2162" y="87" width="1381" height="1027" maximized="true" key="dock-window-1" timestamp="1600830578488">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>
-    <state x="1920" y="87" width="1424" height="1027" maximized="true" key="dock-window-1/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600676977029" />
+    <state x="2162" y="87" width="1381" height="1027" maximized="true" key="dock-window-1/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600830578488" />
   </component>
 </project>
