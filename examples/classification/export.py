@@ -6,7 +6,7 @@
 """
 from textToy import BertTokenizer, SequenceClassification, BertConfig
 from textToy.serving import load_pb, export_model_to_pb
-from .run_ptm import labels
+from run_ptm import labels
 import tensorflow.compat.v1 as tf
 from time import time
 import numpy as np
@@ -27,10 +27,9 @@ import numpy as np
 #     label_ids=None,
 #     dropout_prob=0.1
 # )
-# export_model_to_pb('ckpt/classification/model.ckpt-1500', 'pb/classification',
+# export_model_to_pb('ckpt/classification', 'pb/classification',
 #                    inputs={'input_ids': input_ids, 'input_mask': input_mask, 'token_type_ids': token_type_ids},
-#                    outputs={'logits': model.logits}
-#                    )
+#                    outputs={'logits': model.logits})
 predict_fn, input_names, output_names = load_pb('pb/classification')
 tokenizer = BertTokenizer.from_pretrained('ckpt/classification', do_lower_case=True)
 while True:

@@ -132,7 +132,7 @@ def init_checkpoints(init_checkpoint, model_type, print_vars=True):
         tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
 
     if print_vars:
-        tf.logging.info("  **** Trainable Variables ****")
+        tf.logging.info("  **** Model Variables ****")
         for var in tvars:
             if var.name not in initialized_variable_names:
                 init_string = ", *NOT INIT FROM CKPT*"

@@ -132,10 +132,29 @@ def predict(trainer, steps, set_type='dev'):
     return output_label_ids, predictions
 
 
+def get_model_fn(max_seq_len):
+    def model_fn(inputs, is_training):
+        model = TextCNN(
+            is_training=is_training,
+            input_ids=inputs['input_ids'],
+            label_ids=inputs['label_ids'],
+            seq_length=max_seq_len,
+            filter_sizes=[1, 3, 5, 7], num_filters=128,
+            vocab_size=len(vocab2id),
+            embedding_dim=128, num_classes=len(labels), dropout=0.3)
+        return {'loss': model.loss, 'outputs': [model.logits, inputs['label_ids']]}
+
+    return model_fn
+
+
 if __name__ == '__main__':
+    max_seq_length = 32
+    batch_size = 32
     epochs = 10
     logging_steps = 1000
     output_dir = "ckpt/cnn"
+    gradient_accumulation_steps = 1  # 梯度累积步数
+    learning_rate = 1e-4
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -144,29 +163,35 @@ if __name__ == '__main__':
     label2id = dict(zip(labels, range(len(labels))))
     vocab2id = create_vocab("data/classification/train.csv")
 
-    train_dataset, train_steps = create_dataset(
-        "data/classification/train.csv", vocab2id, label2id, 32, 32, set_type='train'
+    train_dataset, num_train_batch = create_dataset(
+        "data/classification/train.csv", vocab2id, label2id, max_seq_length, batch_size, set_type='train'
     )
-    dev_dataset, dev_steps = create_dataset(
-        "data/classification/dev.csv", vocab2id, label2id, 32, 32, set_type='dev'
+    dev_dataset, num_dev_batch = create_dataset(
+        "data/classification/dev.csv", vocab2id, label2id, max_seq_length, batch_size, set_type='dev'
     )
-    test_dataset, test_steps = create_dataset(
-        "data/classification/test.csv", vocab2id, label2id, 32, 32, set_type='test'
+    test_dataset, num_test_batch = create_dataset(
+        "data/classification/test.csv", vocab2id, label2id, max_seq_length, batch_size, set_type='test'
     )
     output_types = {"input_ids": tf.int32,
                     'label_ids': tf.int64}
     output_shapes = {"input_ids": tf.TensorShape([None, None]),
                      'label_ids': tf.TensorShape([None])}
-    trainer = Trainer('cnn', output_types, output_shapes)
-    model = TextCNN(is_training=trainer.is_training,
-                    input_ids=trainer.inputs['input_ids'],
-                    label_ids=trainer.inputs['label_ids'],
-                    seq_length=32,
-                    filter_sizes=[1, 3, 5, 7], num_filters=128,
-                    vocab_size=len(vocab2id),
-                    embedding_dim=128, num_classes=len(labels), dropout=0.3)
-    train_op = create_optimizer(model.loss, 0.001, train_steps * epochs, train_steps * epochs * 0.1)
-    trainer.compile(train_op, model.loss, [model.logits, trainer.inputs['label_ids']])
+
+    trainer = Trainer('cnn', output_types, output_shapes, device='gpu')
+
+    trainer.build_model(get_model_fn(max_seq_length))
+
+    t_total = num_train_batch * epochs // gradient_accumulation_steps
+
+    train_op = create_optimizer(
+        init_lr=learning_rate,
+        gradients=trainer.gradients,
+        variables=trainer.variables,
+        num_train_steps=t_total,
+        num_warmup_steps=t_total * 0.1
+    )
+
+    trainer.compile(train_op, max_checkpoints=1)
     trainer.build_handle(train_dataset, 'train')
     trainer.build_handle(dev_dataset, 'dev')
     trainer.build_handle(test_dataset, 'test')
@@ -176,29 +201,37 @@ if __name__ == '__main__':
     best_score = 0.
 
     tf.logging.info("***** Running training *****")
-    tf.logging.info("  batch size = {}".format(32))
-    tf.logging.info("  optimizer steps = %d", train_steps * epochs)
+    tf.logging.info("  Num epochs = {}".format(epochs))
+    tf.logging.info("  batch size = {}".format(batch_size))
+    tf.logging.info("  Gradient Accumulation steps = {}".format(gradient_accumulation_steps))
+    tf.logging.info("  Total train batch size (accumulation) = {}".format(batch_size * gradient_accumulation_steps))
+    tf.logging.info("  optimizer steps = %d", t_total)
+    tf.logging.info("  Num devices = {}".format(trainer.num_devices))
+    tf.logging.info("  Num params = {}".format(trainer.num_params))
 
     for epoch in range(epochs):
-        epoch_iter = bar_fn(range(train_steps), desc='epoch {} '.format(epoch + 1))
+        epoch_iter = bar_fn(range(num_train_batch), desc='epoch {} '.format(epoch + 1))
         for step in epoch_iter:
-            train_loss = trainer.train_step()
+            train_loss = trainer.backward()
             epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
 
-            if trainer.global_step % logging_steps == 0 or trainer.global_step == train_steps * epochs:
-                y_true, y_pred = predict(trainer, dev_steps, 'dev')
-                acc = accuracy_score(y_true, y_pred)
-                if acc > best_score:
-                    best_score = acc
-                    trainer.save_pretrained(output_dir)
-                tf.logging.info("***** eval results *****")
-                tf.logging.info(" global step : {}".format(trainer.global_step))
-                tf.logging.info(" eval accuracy : {:.4f}".format(acc))
-                tf.logging.info(" best accuracy : {:.4f}".format(best_score))
+            if (step + 1) % gradient_accumulation_steps == 0:
+                trainer.train_step()
+                trainer.zero_grad()
+                if trainer.global_step % logging_steps == 0 or trainer.global_step == t_total:
+                    y_true, y_pred = predict(trainer, num_dev_batch, 'dev')
+                    acc = accuracy_score(y_true, y_pred)
+                    if acc > best_score:
+                        best_score = acc
+                        trainer.save_pretrained(output_dir)
+                    tf.logging.info("***** eval results *****")
+                    tf.logging.info(" global step : {}".format(trainer.global_step))
+                    tf.logging.info(" eval accuracy : {:.4f}".format(acc))
+                    tf.logging.info(" best accuracy : {:.4f}".format(best_score))
 
     tf.logging.info("***** Running Test *****")
     trainer.from_pretrained(output_dir)
-    y_true, y_pred = predict(trainer, test_steps, 'test')
+    y_true, y_pred = predict(trainer, num_test_batch, 'test')
     report = classification_report(y_true, y_pred, target_names=labels, digits=4)
     tf.logging.info("***** test results *****")
     report = report.split('\n')

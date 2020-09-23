@@ -53,12 +53,9 @@ config.save_pretrained("save_path")
 tokenizer.save_pretrained("save_path")
 ```
 #### Trainer
-trainer支持的功能MultiDeviceTrainer也支持，推荐就用MultiDeviceTrainer，如果想看看实现可以查看[textToy/trainer.py](textToy/trainer.py)
-#### MultiDeviceTrainer
-这个训练器支持多卡训练，当然也支持单卡训练。具体注释查看[textToy/trainer.py](textToy/trainer.py)
 ```python
 import tensorflow.compat.v1 as tf
-from textToy import MultiDeviceTrainer
+from textToy import Trainer
 from textToy.optimizer import create_optimizer
 
 # 创建dataset
@@ -75,8 +72,8 @@ def get_model_fn():
     return model_fn
 
 
-train_dataset = create_dataset('train')
-dev_dataset = create_dataset('dev')
+train_dataset, num_train_batch = create_dataset('train')
+dev_dataset, num_dev_batch = create_dataset('dev')
 
 # 创建dataset输入的types和shapes
 # 下面是分类的types和shapes
@@ -92,22 +89,24 @@ output_shapes = {"input_ids": tf.TensorShape([None, None]),
 
 # 配置trainer，传入模型类型 bert、albert、electra、albert、nezha、wobert
 # 指定device为 gpu 或 cpu，默认的gpu
-trainer = MultiDeviceTrainer('bert', output_types, output_shapes, device='gpu')
+trainer = Trainer('bert', output_types, output_shapes, device='gpu')
 
 trainer.build_model(get_model_fn())
+
+t_total = num_train_batch * epochs // gradient_accumulation_steps
 
 # 训练的话创建train_op
 # 使用多卡训练器MultiDeviceTrainer时，创建train_op需要传入trainer的loss和grads_and_vars
 # 因为这里的loss和梯度在训练器中已经自动求多卡的平均了。
 train_op = create_optimizer(
-    trainer.loss,
     init_lr=learning_rate,
-    num_train_steps=train_steps * epochs,
-    num_warmup_steps=int(train_steps * epochs * 0.1),
-    grads_and_vars=trainer.grads_and_vars)   
+    gradients=trainer.gradients,
+    variables=trainer.variables,
+    num_train_steps=t_total,
+    num_warmup_steps=t_total * 0.1)   
 
 # 配置优化节点
-trainer.compile(train_op)
+trainer.compile(train_op, max_checkpoints=1)
 
 # 将dataset传入trainer
 trainer.build_handle(train_dataset, 'train')
@@ -117,7 +116,8 @@ trainer.build_handle(dev_dataset, 'dev')
 trainer.from_pretrained('model_dir')
 
 """
-接下来可以调用 trainer.train_step()  会返回loss
+接下来可以调用 trainer.backward()  梯度累积，会返回loss
+              trainer.train_step() 优化参数，不返回
               trainer.eval_step()  会返回loss、model_fn定义的outputs
               trainer.test_step()  返回model_fn定义的outputs
 进行训练、验证、预测

@@ -4,6 +4,7 @@
 @file: serving.py
 @date: 2020/09/10
 """
+import os
 import tensorflow.compat.v1 as tf
 from tensorflow.python.framework import ops
 from tensorflow.python.saved_model import builder
@@ -13,7 +14,7 @@ from tensorflow.python.saved_model import tag_constants
 from tensorflow.contrib import predictor
 
 
-def export_model_to_pb(ckpt_file, export_path,
+def export_model_to_pb(model_name_or_path, export_path,
                        inputs: dict, outputs: dict):
     """
     config = BertConfig.from_pretrained('ckpt')
@@ -35,7 +36,7 @@ def export_model_to_pb(ckpt_file, export_path,
                     inputs={'input_ids': input_ids, 'input_mask': input_mask, 'token_type_ids': token_type_ids},
                     outputs={'logits': model.logits}
                     )
-    :param ckpt_file:
+    :param model_name_or_path:
     :param export_path:
     :param inputs:
     :param outputs:
@@ -45,6 +46,13 @@ def export_model_to_pb(ckpt_file, export_path,
     gpu_config.gpu_options.allow_growth = True
     sess = tf.Session(config=gpu_config)
     saver = tf.train.Saver()
+
+    if os.path.isdir(model_name_or_path):
+        ckpt_file = tf.train.latest_checkpoint(model_name_or_path)
+        if ckpt_file is None:
+            ckpt_file = os.path.join(model_name_or_path, 'model.ckpt')
+    else:
+        ckpt_file = model_name_or_path
     saver.restore(sess, ckpt_file)
     save_pb(sess, export_path, inputs=inputs, outputs=outputs, saver=saver)
     tf.logging.info('export model to {}'.format(export_path))

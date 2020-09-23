@@ -13,4 +13,3 @@ CUDA_VISIBLE_DEVICES=1 python run_ptm.py
 ```
 CUDA_VISIBLE_DEVICES=0,1 python run_ptm.py
 ```
-textCNN例子用的Trainer，不支持多卡，ptm用的MultiDeviceTrainer,支持多卡

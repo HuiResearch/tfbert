@@ -31,7 +31,7 @@ labels = ['O', 'B-PER', 'I-PER', 'B-ORG', 'I-ORG', 'B-LOC', 'I-LOC']
 #     label_ids=None,
 #     add_crf=False
 # )
-# export_model_to_pb('ckpt/ner/model.ckpt-3936', 'pb/ner',
+# export_model_to_pb('ckpt/ner', 'pb/ner',
 #                    inputs={'input_ids': input_ids, 'input_mask': input_mask, 'token_type_ids': token_type_ids},
 #                    outputs={'prediction': model.predictions}
 #                    )

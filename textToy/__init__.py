@@ -5,7 +5,7 @@
 @date: 2020/09/08
 """
 
-from .trainer import Trainer, MultiDeviceTrainer
+from .trainer import Trainer
 from .config import (
     BertConfig, ALBertConfig, ElectraConfig, NeZhaConfig, CONFIGS)
 from .tokenizer import BertTokenizer, ALBertTokenizer, ElectraTokenizer, NeZhaTokenizer, WoBertTokenizer, TOKENIZERS

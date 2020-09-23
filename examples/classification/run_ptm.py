@@ -14,9 +14,8 @@ from textToy import (SequenceClassification,
                      set_seed, ProgressBar)
 from tqdm import tqdm
 import pandas as pd
-from textToy.ptm.ckpt_utils import get_save_vars
 from textToy.optimizer import create_optimizer
-from textToy import MultiDeviceTrainer
+from textToy import Trainer
 import numpy as np
 from sklearn.metrics import classification_report, accuracy_score
 import os
@@ -34,7 +33,8 @@ model_dir = 'bert_base'
 output_dir = "ckpt/classification"
 
 # batch size 需要是卡数的整倍数
-batch_size = 64
+batch_size = 4
+gradient_accumulation_steps = 8  # 梯度累积步数
 max_seq_length = 32
 learning_rate = 2e-5
 random_seed = 42
@@ -107,33 +107,30 @@ def main():
     tokenizer = TOKENIZERS[model_type].from_pretrained(model_dir, do_lower_case=True)
 
     # 创建dataset
-    train_dataset, train_steps = load_dataset('train', tokenizer)
-    dev_dataset, dev_steps = load_dataset('dev', tokenizer)
-    test_dataset, test_steps = load_dataset('test', tokenizer)
+    train_dataset, num_train_batch = load_dataset('train', tokenizer)
+    dev_dataset, num_dev_batch = load_dataset('dev', tokenizer)
+    test_dataset, num_test_batch = load_dataset('test', tokenizer)
 
     output_types, output_shapes = return_types_and_shapes(for_trainer=True)
 
     # 初始化trainer
-    trainer = MultiDeviceTrainer(
+    trainer = Trainer(
         model_type, output_types, output_shapes, device='gpu'
     )
 
     # 构建模型
     trainer.build_model(get_model_fn(model_type, config, num_classes=len(labels)))
 
+    t_total = num_train_batch * epochs // gradient_accumulation_steps
     # 创建train op
-    train_op = create_optimizer(trainer.loss,
-                                init_lr=learning_rate,
-                                num_train_steps=train_steps * epochs,
-                                num_warmup_steps=int(train_steps * epochs * 0.1),
-                                grads_and_vars=trainer.grads_and_vars)
+    train_op = create_optimizer(init_lr=learning_rate,
+                                gradients=trainer.gradients,
+                                variables=trainer.variables,
+                                num_train_steps=t_total,
+                                num_warmup_steps=int(t_total * epochs * 0.1))
 
-    # 使用get_save_vars方法返回去除adam的参数，这样保存的模型参数就没有adam
-    save_vars = get_save_vars()
-
-    # 配置trainer，将train op、保存参数、模型保存最大数量传入
-    trainer.compile(
-        train_op, var_list=save_vars, max_checkpoints=1)
+    # 配置trainer，将train op、模型保存最大数量传入
+    trainer.compile(train_op, max_checkpoints=1)
 
     trainer.build_handle(train_dataset, 'train')
     trainer.build_handle(dev_dataset, 'dev')
@@ -145,33 +142,40 @@ def main():
     best_score = 0.
 
     tf.logging.info("***** Running training *****")
+    tf.logging.info("  Num epochs = {}".format(epochs))
     tf.logging.info("  batch size = {}".format(batch_size))
-    tf.logging.info("  epochs = {}".format(epochs))
-    tf.logging.info("  optimizer steps = %d", train_steps * epochs)
-    tf.logging.info("  num devices = {}".format(trainer.num_devices))
-    tf.logging.info("  num params = {}".format(trainer.num_params))
+    tf.logging.info("  Gradient Accumulation steps = {}".format(gradient_accumulation_steps))
+    tf.logging.info("  Total train batch size (accumulation) = {}".format(batch_size * gradient_accumulation_steps))
+    tf.logging.info("  optimizer steps = %d", t_total)
+    tf.logging.info("  Num devices = {}".format(trainer.num_devices))
+    tf.logging.info("  Num params = {}".format(trainer.num_params))
 
     for epoch in range(epochs):
-        epoch_iter = bar_fn(range(train_steps), desc='epoch {} '.format(epoch + 1))
+        epoch_iter = bar_fn(range(num_train_batch), desc='epoch {} '.format(epoch + 1))
         for step in epoch_iter:
-            train_loss = trainer.train_step()
+            train_loss = trainer.backward()
             epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
-            if trainer.global_step % logging_steps == 0 or trainer.global_step == train_steps * epochs:
-                y_true, y_pred = predict(trainer, dev_steps, 'dev')
-                acc = accuracy_score(y_true, y_pred)
-                if acc > best_score:
-                    best_score = acc
-                    trainer.save_pretrained(output_dir)
-                    config.save_pretrained(output_dir)
-                    tokenizer.save_pretrained(output_dir)
-                tf.logging.info("***** eval results *****")
-                tf.logging.info(" global step : {}".format(trainer.global_step))
-                tf.logging.info(" eval accuracy : {:.4f}".format(acc))
-                tf.logging.info(" best accuracy : {:.4f}".format(best_score))
+
+            if (step + 1) % gradient_accumulation_steps == 0:
+                trainer.train_step()
+                trainer.zero_grad()
+
+                if trainer.global_step % logging_steps == 0 or trainer.global_step == t_total:
+                    y_true, y_pred = predict(trainer, num_dev_batch, 'dev')
+                    acc = accuracy_score(y_true, y_pred)
+                    if acc > best_score:
+                        best_score = acc
+                        trainer.save_pretrained(output_dir)
+                        config.save_pretrained(output_dir)
+                        tokenizer.save_pretrained(output_dir)
+                    tf.logging.info("***** eval results *****")
+                    tf.logging.info(" global step : {}".format(trainer.global_step))
+                    tf.logging.info(" eval accuracy : {:.4f}".format(acc))
+                    tf.logging.info(" best accuracy : {:.4f}".format(best_score))
 
     tf.logging.info("***** Running Test *****")
     trainer.from_pretrained(output_dir)
-    y_true, y_pred = predict(trainer, test_steps, 'test')
+    y_true, y_pred = predict(trainer, num_test_batch, 'test')
     report = classification_report(y_true, y_pred, target_names=labels, digits=4)
     tf.logging.info("***** test results *****")
     report = report.split('\n')

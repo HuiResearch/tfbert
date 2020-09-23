@@ -10,12 +10,11 @@ import tensorflow.compat.v1 as tf
 from textToy.data.classification import (
     InputExample, convert_examples_to_features,
     create_dataset_by_gen, return_types_and_shapes)
-from textToy import (MultiDeviceTrainer, MultiLabelClassification,
+from textToy import (Trainer, MultiLabelClassification,
                      CONFIGS, TOKENIZERS,
                      set_seed, ProgressBar)
 from tqdm import tqdm
 import json
-from textToy.ptm.ckpt_utils import get_save_vars
 from textToy.optimizer import create_optimizer
 import numpy as np
 from textToy.metric.multi_label import multi_label_metric
@@ -40,6 +39,8 @@ threads = 8
 epochs = 4
 labels = ['DV%d' % (i + 1) for i in range(20)]
 threshold = [0.5] * len(labels)
+
+gradient_accumulation_steps = 1
 
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
@@ -122,25 +123,28 @@ def main():
     config = CONFIGS[model_type].from_pretrained(model_dir)
     tokenizer = TOKENIZERS[model_type].from_pretrained(model_dir, do_lower_case=True)
 
-    train_dataset, train_steps = load_dataset('train', tokenizer)
-    test_dataset, test_steps = load_dataset('test', tokenizer)
+    train_dataset, num_train_batch = load_dataset('train', tokenizer)
+    test_dataset, num_test_batch = load_dataset('test', tokenizer)
 
     output_types, output_shapes = return_types_and_shapes(for_trainer=True, is_multi_label=True)
 
-    trainer = MultiDeviceTrainer(
+    trainer = Trainer(
         model_type, output_types, output_shapes, device='gpu'
     )
 
     trainer.build_model(get_model_fn(model_type, config, len(labels)))
 
+    t_total = num_train_batch * epochs // gradient_accumulation_steps
+
     train_op = create_optimizer(
-        trainer.loss, init_lr=learning_rate,
-        num_train_steps=train_steps * epochs,
-        num_warmup_steps=train_steps * epochs * 0.1,
-        grads_and_vars=trainer.grads_and_vars)
+        init_lr=learning_rate,
+        gradients=trainer.gradients,
+        variables=trainer.variables,
+        num_train_steps=t_total,
+        num_warmup_steps=t_total * 0.1)
 
     trainer.compile(
-        train_op, var_list=get_save_vars(), max_checkpoints=1)
+        train_op, max_checkpoints=1)
 
     trainer.build_handle(train_dataset, 'train')
     trainer.build_handle(test_dataset, 'test')
@@ -148,20 +152,26 @@ def main():
     trainer.from_pretrained(model_dir)
 
     tf.logging.info("***** Running training *****")
+    tf.logging.info("  Num epochs = {}".format(epochs))
     tf.logging.info("  batch size = {}".format(batch_size))
-    tf.logging.info("  epochs = {}".format(epochs))
-    tf.logging.info("  optimizer steps = %d", train_steps * epochs)
-    tf.logging.info("  num devices = {}".format(trainer.num_devices))
-    tf.logging.info("  num params = {}".format(trainer.num_params))
+    tf.logging.info("  Gradient Accumulation steps = {}".format(gradient_accumulation_steps))
+    tf.logging.info("  Total train batch size (accumulation) = {}".format(batch_size * gradient_accumulation_steps))
+    tf.logging.info("  optimizer steps = %d", t_total)
+    tf.logging.info("  Num devices = {}".format(trainer.num_devices))
+    tf.logging.info("  Num params = {}".format(trainer.num_params))
 
     best_score = 0.
     for epoch in range(epochs):
-        epoch_iter = bar_fn(range(train_steps), desc='epoch {} '.format(epoch + 1))
+        epoch_iter = bar_fn(range(num_train_batch), desc='epoch {} '.format(epoch + 1))
         for step in epoch_iter:
-            train_loss = trainer.train_step()
+            train_loss = trainer.backward()
             epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
-            # if trainer.global_step % logging_steps == 0 or trainer.global_step == train_steps * epochs:
-        y_true, y_pred = predict(trainer, test_steps, 'test')
+
+            if (step + 1) % gradient_accumulation_steps == 0:
+                trainer.train_step()
+                trainer.zero_grad()
+
+        y_true, y_pred = predict(trainer, num_test_batch, 'test')
         score = multi_label_metric(y_true, y_pred, label_list=labels)['dict_result']['micro macro avg']['f1-score']
         if score > best_score:
             best_score = score
@@ -175,7 +185,7 @@ def main():
 
     tf.logging.info("***** Running Test *****")
     trainer.from_pretrained(output_dir)
-    y_true, y_pred = predict(trainer, test_steps, 'test')
+    y_true, y_pred = predict(trainer, num_test_batch, 'test')
     report = multi_label_metric(y_true, y_pred, label_list=labels)['string_result']
     open(os.path.join(output_dir, 'result.txt'), 'w', encoding='utf-8').write(report)
     tf.logging.info("***** test results *****")

@@ -269,26 +269,26 @@ def lr_schedule(init_lr,
     return learning_rate
 
 
-def create_optimizer(loss,
-                     init_lr,
-                     num_train_steps=None,
-                     num_warmup_steps=None,
-                     optimizer_type='adamw',
-                     grads_and_vars=None,
-                     max_grad=1.0,
-                     epsilon=1e-6,
-                     weight_decay=0.01,
-                     use_tpu=False,
-                     decay_method='poly',
-                     min_lr_ratio=0.):
+def create_optimizer(
+        init_lr,
+        gradients,
+        variables=None,
+        num_train_steps=None,
+        num_warmup_steps=None,
+        optimizer_type='adamw',
+        max_grad=1.0,
+        epsilon=1e-6,
+        weight_decay=0.01,
+        use_tpu=False,
+        decay_method='poly',
+        min_lr_ratio=0.):
     '''
-    创建原始bert开源代码的优化器AdamW
-    :param loss: 模型loss
     :param init_lr: 初始化学习率
+    :param gradients: loss 对 variables 的梯度
+    :param variables: 变量
     :param num_train_steps: 训练总步数
     :param num_warmup_steps: warmup步数，在这个步数前，学习率等于 global_step/num_warmup_steps * init_lr
     :param optimizer_type: adamw or lamb
-    :param grads_and_vars:
     :param max_grad: 最大梯度，大于这个梯度都会被裁剪成这个值
     :param epsilon:  epsilon参数
     :param weight_decay: 衰减参数
@@ -324,18 +324,23 @@ def create_optimizer(loss,
             epsilon=epsilon,
             exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"]
         )
+    elif optimizer_type == 'adam':
+        optimizer = Adam(
+            learning_rate=learning_rate,
+            beta1=0.9,
+            beta2=0.999,
+            epsilon=1e-8)
     else:
         raise ValueError('Unsupported optimizer option: %s' % optimizer_type)
 
     if use_tpu:
         optimizer = contrib.tpu.CrossShardOptimizer(optimizer)
 
-    if grads_and_vars is None:
-        grads_and_vars = optimizer.compute_gradients(loss)
-    gradients, variables = zip(*grads_and_vars)
-
     # This is how the model was pre-trained.
     (grads, gnorm) = tf.clip_by_global_norm(gradients, clip_norm=max_grad)  # 梯度裁剪
+
+    if variables is None:
+        variables = tf.trainable_variables()
 
     train_op = optimizer.apply_gradients(
         zip(grads, variables), global_step=global_step)

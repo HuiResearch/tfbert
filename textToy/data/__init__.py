@@ -16,7 +16,7 @@ def process_dataset(dataset, batch_size, num_features, set_type):
 
     # 在train阶段，因为设置了drop_remainder，会舍弃不足batch size的一个batch，所以步数计算方式和验证测试不同
     if set_type == 'train':
-        steps_per_epoch = num_features // batch_size
+        num_batch_per_epoch = num_features // batch_size
     else:
-        steps_per_epoch = (num_features + batch_size - 1) // batch_size
-    return dataset, steps_per_epoch
+        num_batch_per_epoch = (num_features + batch_size - 1) // batch_size
+    return dataset, num_batch_per_epoch
