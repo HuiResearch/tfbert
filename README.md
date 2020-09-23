@@ -16,7 +16,7 @@ tensorflow 2.x的话毛病多多，estimator呢我用得不太习惯，平时也
 
 config、tokenizer参考的transformers的实现。
 
-内置有自定义的Trainer、MultiDeviceTrainer，具体使用下边会介绍。
+内置有自定义的Trainer，像pytorch一样使用tensorflow1.14，具体使用下边会介绍。
 
 目前内置 [文本分类](examples/classification)、[文本多标签分类](examples/multi_label)、[命名实体识别](examples/ner)例子。
 

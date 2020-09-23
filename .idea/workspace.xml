@@ -25,9 +25,8 @@
     </select>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="增加梯度累积功能，修改优化器，去除冗余代码">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="修改readme">
+      <change beforePath="$PROJECT_DIR$/textToy/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/trainer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,7 +83,7 @@
       <updated>1600667842511</updated>
       <workItem from="1600667843882" duration="11793000" />
       <workItem from="1600743834154" duration="585000" />
-      <workItem from="1600783010508" duration="8329000" />
+      <workItem from="1600783010508" duration="8728000" />
     </task>
     <task id="LOCAL-00001" summary="update README.md">
       <created>1600743913116</created>
@@ -107,7 +106,21 @@
       <option name="project" value="LOCAL" />
       <updated>1600830344868</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="增加梯度累积功能，修改优化器，去除冗余代码">
+      <created>1600843494084</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1600843494084</updated>
+    </task>
+    <task id="LOCAL-00005" summary="修改readme">
+      <created>1600843568459</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1600843568459</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -140,17 +153,22 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="update README.md" />
     <MESSAGE value="增加梯度累积功能，修改优化器，去除冗余代码" />
-    <option name="LAST_COMMIT_MESSAGE" value="增加梯度累积功能，修改优化器，去除冗余代码" />
+    <MESSAGE value="修改readme" />
+    <option name="LAST_COMMIT_MESSAGE" value="修改readme" />
   </component>
   <component name="WindowStateProjectService">
     <state x="782" y="415" key="GitRewordDialog" timestamp="1600744225425">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="782" y="415" key="GitRewordDialog/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600744225425" />
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1600830346138">
+    <state x="790" y="389" key="VCS.EditChangelistDialog" timestamp="1600843535736">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600830346138" />
+    <state x="790" y="389" key="VCS.EditChangelistDialog/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600843535736" />
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1600843571995">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600843571995" />
     <state x="2162" y="87" width="1381" height="1027" maximized="true" key="dock-window-1" timestamp="1600830578488">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>

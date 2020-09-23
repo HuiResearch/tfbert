@@ -32,7 +32,7 @@ class Trainer:
                   6、调用trainer.build_handle()，将dataset分别传入，根据传入的dataset构建相应handle
                   7、如果加载预训练参数，调用trainer.from_pretrained()；如果不加载，调用trainer.init_variables()
                   8、
-                     使用backward()累积梯度，会返回训练loss
+                     使用trainer.backward()累积梯度，会返回训练loss
                      开始使用trainer.train_step()训练
                      验证调用trainer.eval_step()，会返回compile时的outputs，
                      验证和预测记得先使用trainer.init_iterator()初始化
@@ -202,7 +202,7 @@ class Trainer:
         如果需要验证和测试，需要传入outputs，outputs是一个列表
         examples:
 
-        trainer = MultiDeviceTrainer(
+        trainer = Trainer(
         model_type, output_types, output_shapes)
 
         def get_model_fn(model_type, config, num_classes):
