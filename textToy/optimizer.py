@@ -329,7 +329,29 @@ def create_optimizer(
             learning_rate=learning_rate,
             beta1=0.9,
             beta2=0.999,
-            epsilon=1e-8)
+            epsilon=epsilon)
+    elif optimizer_type == 'sgd':
+        optimizer = tf.train.GradientDescentOptimizer(
+            learning_rate=learning_rate
+        )
+    elif optimizer_type == 'adadelta':
+        optimizer = tf.train.AdadeltaOptimizer(
+            learning_rate=learning_rate,
+            rho=0.95,
+            epsilon=epsilon,
+        )
+    elif optimizer_type == 'adagrad':
+        optimizer = tf.train.AdagradOptimizer(
+            learning_rate=learning_rate,
+            initial_accumulator_value=0.1
+        )
+    elif optimizer_type == 'rmsp':
+        optimizer = tf.train.RMSPropOptimizer(
+            learning_rate=learning_rate,
+            decay=0.9,
+            momentum=0.0,
+            epsilon=epsilon,
+        )
     else:
         raise ValueError('Unsupported optimizer option: %s' % optimizer_type)
 
