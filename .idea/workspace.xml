@@ -25,7 +25,7 @@
     </select>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="修改readme">
+    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="增加优化器">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/textToy/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/optimizer.py" afterDir="false" />
     </list>
@@ -84,7 +84,7 @@
       <updated>1600667842511</updated>
       <workItem from="1600667843882" duration="11793000" />
       <workItem from="1600743834154" duration="585000" />
-      <workItem from="1600783010508" duration="13316000" />
+      <workItem from="1600783010508" duration="18413000" />
     </task>
     <task id="LOCAL-00001" summary="update README.md">
       <created>1600743913116</created>
@@ -128,7 +128,21 @@
       <option name="project" value="LOCAL" />
       <updated>1600844043976</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="增加优化器">
+      <created>1600917174912</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1600917174912</updated>
+    </task>
+    <task id="LOCAL-00008" summary="增加优化器">
+      <created>1600917292397</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1600917292397</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -162,7 +176,8 @@
     <MESSAGE value="update README.md" />
     <MESSAGE value="增加梯度累积功能，修改优化器，去除冗余代码" />
     <MESSAGE value="修改readme" />
-    <option name="LAST_COMMIT_MESSAGE" value="修改readme" />
+    <MESSAGE value="增加优化器" />
+    <option name="LAST_COMMIT_MESSAGE" value="增加优化器" />
   </component>
   <component name="WindowStateProjectService">
     <state x="782" y="415" key="GitRewordDialog" timestamp="1600744225425">
@@ -173,10 +188,10 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="790" y="389" key="VCS.EditChangelistDialog/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600843535736" />
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1600844045012">
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1600917295286">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600844045012" />
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600917295286" />
     <state x="2162" y="87" width="1381" height="1027" maximized="true" key="dock-window-1" timestamp="1600830578488">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>

@@ -303,10 +303,13 @@ def create_optimizer(
     num_warmup_steps = int(num_warmup_steps)
     global_step = tf.train.get_or_create_global_step()
 
-    learning_rate = lr_schedule(
-        init_lr, num_train_steps, num_warmup_steps,
-        decay_method=decay_method, min_lr_ratio=min_lr_ratio
-    )
+    if decay_method is None:
+        learning_rate = init_lr
+    else:
+        learning_rate = lr_schedule(
+            init_lr, num_train_steps, num_warmup_steps,
+            decay_method=decay_method, min_lr_ratio=min_lr_ratio
+        )
 
     if optimizer_type == 'adamw':
         optimizer = AdamWeightDecayOptimizer(
