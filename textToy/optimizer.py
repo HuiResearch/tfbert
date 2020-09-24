@@ -278,6 +278,7 @@ def create_optimizer(
         optimizer_type='adamw',
         max_grad=1.0,
         epsilon=1e-6,
+        momentum=0.,
         weight_decay=0.01,
         use_tpu=False,
         decay_method='poly',
@@ -291,6 +292,7 @@ def create_optimizer(
     :param optimizer_type: adamw or lamb
     :param max_grad: 最大梯度，大于这个梯度都会被裁剪成这个值
     :param epsilon:  epsilon参数
+    :param momentum:
     :param weight_decay: 衰减参数
     :param use_tpu: 是否使用tpu
     :param decay_method: 学习率衰减方式，可选择 poly、cos,
@@ -349,7 +351,7 @@ def create_optimizer(
         optimizer = tf.train.RMSPropOptimizer(
             learning_rate=learning_rate,
             decay=0.9,
-            momentum=0.0,
+            momentum=momentum,
             epsilon=epsilon,
         )
     else:
