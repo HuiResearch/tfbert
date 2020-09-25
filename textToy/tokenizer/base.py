@@ -88,6 +88,39 @@ class PTMTokenizer(object):
         """ Id of the mask token in the vocabulary. E.g. when training a ptm with masked-language modeling. Log an error if used while not having been set. """
         return self.convert_tokens_to_ids(self.mask_token)
 
+    @property
+    def special_tokens_map_extended(self):
+        set_attr = {}
+        for attr in self.SPECIAL_TOKENS_ATTRIBUTES:
+            attr_value = getattr(self, "_" + attr)
+            if attr_value:
+                set_attr[attr] = attr_value
+        return set_attr
+
+    @property
+    def all_special_tokens(self):
+        """ List all the special tokens ('<unk>', '<cls>'...) mapped to class attributes
+            Convert tokens of AddedToken type in string.
+            All returned tokens are strings
+            (cls_token, unk_token...).
+        """
+        all_toks = [str(s) for s in self.all_special_tokens_extended]
+        return all_toks
+
+    @property
+    def all_special_tokens_extended(self):
+        """ List all the special tokens ('<unk>', '<cls>'...) mapped to class attributes
+            Keep the tokens as AddedToken if they are of this type.
+
+            AddedToken can be used to control more finely how special tokens are tokenized.
+        """
+        all_toks = []
+        set_attr = self.special_tokens_map_extended
+        for attr_value in set_attr.values():
+            all_toks = all_toks + (list(attr_value) if isinstance(attr_value, (list, tuple)) else [attr_value])
+        all_toks = list(set(all_toks))
+        return all_toks
+
     @unk_token.setter
     def unk_token(self, value):
         self._unk_token = value
@@ -107,6 +140,8 @@ class PTMTokenizer(object):
     @mask_token.setter
     def mask_token(self, value):
         self._mask_token = value
+
+
 
     def __init__(self, **kwargs):
 
@@ -258,17 +293,38 @@ class PTMTokenizer(object):
 class BasicTokenizer(object):
     """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
 
-    def __init__(self, do_lower_case=True):
-        """Constructs a BasicTokenizer.
-        Args:
-          do_lower_case: Whether to lower case the input.
-        """
-        self.do_lower_case = do_lower_case
+    def __init__(self, do_lower_case=True, never_split=None, tokenize_chinese_chars=True):
+        """ Constructs a BasicTokenizer.
 
-    def tokenize(self, text):
-        """Tokenizes a piece of text."""
-        text = convert_to_unicode(text)
-        text = self._clean_text(text)
+        Args:
+            **do_lower_case**: Whether to lower case the input.
+            **never_split**: (`optional`) list of str
+                Kept for backward compatibility purposes.
+                Now implemented directly at the base class level (see :func:`PreTrainedTokenizer.tokenize`)
+                List of token not to split.
+            **tokenize_chinese_chars**: (`optional`) boolean (default True)
+                Whether to tokenize Chinese characters.
+                This should likely be deactivated for Japanese:
+                see: https://github.com/huggingface/pytorch-pretrained-BERT/issues/328
+        """
+        if never_split is None:
+            never_split = []
+        self.do_lower_case = do_lower_case
+        self.never_split = set(never_split)
+        self.tokenize_chinese_chars = tokenize_chinese_chars
+
+    def tokenize(self, text, never_split=None):
+        """ Basic Tokenization of a piece of text.
+            Split on "white spaces" only, for sub-word tokenization, see WordPieceTokenizer.
+
+        Args:
+            **never_split**: (`optional`) list of str
+                Kept for backward compatibility purposes.
+                Now implemented directly at the base class level (see :func:`PreTrainedTokenizer.tokenize`)
+                List of token not to split.
+        """
+        # union() returns a new set by concatenating the two sets.
+        never_split = self.never_split.union(set(never_split)) if never_split else self.never_split
 
         # This was added on November 1st, 2018 for the multilingual and Chinese
         # models. This is also applied to the English models now, but it doesn't
@@ -276,15 +332,15 @@ class BasicTokenizer(object):
         # and generally don't have any Chinese data in them (there are Chinese
         # characters in the vocabulary because Wikipedia does have some Chinese
         # words in the English Wikipedia.).
-        text = self._tokenize_chinese_chars(text)
-
+        if self.tokenize_chinese_chars:
+            text = self._tokenize_chinese_chars(text)
         orig_tokens = whitespace_tokenize(text)
         split_tokens = []
         for token in orig_tokens:
-            if self.do_lower_case:
+            if self.do_lower_case and token not in never_split:
                 token = token.lower()
                 token = self._run_strip_accents(token)
-            split_tokens.extend(self._run_split_on_punc(token))
+            split_tokens.extend(self._run_split_on_punc(token, never_split))
 
         output_tokens = whitespace_tokenize(" ".join(split_tokens))
         return output_tokens
@@ -300,8 +356,10 @@ class BasicTokenizer(object):
             output.append(char)
         return "".join(output)
 
-    def _run_split_on_punc(self, text):
+    def _run_split_on_punc(self, text, never_split=None):
         """Splits punctuation on a piece of text."""
+        if never_split is not None and text in never_split:
+            return [text]
         chars = list(text)
         i = 0
         start_new_word = True
@@ -343,14 +401,16 @@ class BasicTokenizer(object):
         # as is Japanese Hiragana and Katakana. Those alphabets are used to write
         # space-separated words, so they are not treated specially and handled
         # like the all of the other languages.
-        if ((cp >= 0x4E00 and cp <= 0x9FFF) or  #
-                (cp >= 0x3400 and cp <= 0x4DBF) or  #
-                (cp >= 0x20000 and cp <= 0x2A6DF) or  #
-                (cp >= 0x2A700 and cp <= 0x2B73F) or  #
-                (cp >= 0x2B740 and cp <= 0x2B81F) or  #
-                (cp >= 0x2B820 and cp <= 0x2CEAF) or
-                (cp >= 0xF900 and cp <= 0xFAFF) or  #
-                (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
+        if (
+            (cp >= 0x4E00 and cp <= 0x9FFF)
+            or (cp >= 0x3400 and cp <= 0x4DBF)  #
+            or (cp >= 0x20000 and cp <= 0x2A6DF)  #
+            or (cp >= 0x2A700 and cp <= 0x2B73F)  #
+            or (cp >= 0x2B740 and cp <= 0x2B81F)  #
+            or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
+            or (cp >= 0xF900 and cp <= 0xFAFF)
+            or (cp >= 0x2F800 and cp <= 0x2FA1F)  #
+        ):  #
             return True
 
         return False
@@ -360,7 +420,7 @@ class BasicTokenizer(object):
         output = []
         for char in text:
             cp = ord(char)
-            if cp == 0 or cp == 0xfffd or _is_control(char):
+            if cp == 0 or cp == 0xFFFD or _is_control(char):
                 continue
             if _is_whitespace(char):
                 output.append(" ")

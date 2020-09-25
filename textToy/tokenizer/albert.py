@@ -150,9 +150,12 @@ class ALBertTokenizer(PTMTokenizer):
             split_tokens = encode_pieces(self.sp_model, text, return_unicode=False)
         else:
             split_tokens = []
-            for token in self.basic_tokenizer.tokenize(text):
-                for sub_token in self.wordpiece_tokenizer.tokenize(token):
-                    split_tokens.append(sub_token)
+            for token in self.basic_tokenizer.tokenize(text, never_split=self.all_special_tokens):
+                # If the token is part of the never_split set
+                if token in self.basic_tokenizer.never_split:
+                    split_tokens.append(token)
+                else:
+                    split_tokens += self.wordpiece_tokenizer.tokenize(token)
 
         return split_tokens
 

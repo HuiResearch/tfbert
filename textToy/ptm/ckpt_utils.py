@@ -13,7 +13,7 @@ import six
 from typing import List
 
 
-def get_bert_assignment_map_from_checkpoint(tvars, init_checkpoint):
+def get_bert_assignment_map_from_checkpoint(tvars, init_checkpoint, prefix=''):
     """Compute the union of the current variables and checkpoint variables."""
     assignment_map = {}
     initialized_variable_names = {}
@@ -30,17 +30,18 @@ def get_bert_assignment_map_from_checkpoint(tvars, init_checkpoint):
 
     assignment_map = collections.OrderedDict()
     for x in init_vars:
-        (name, var) = (x[0], x[1])
-        if name not in name_to_variable:
+        (old_name, var) = (x[0], x[1])
+        new_name = prefix + old_name
+        if new_name not in name_to_variable:
             continue
-        assignment_map[name] = name
-        initialized_variable_names[name] = 1
-        initialized_variable_names[name + ":0"] = 1
+        assignment_map[old_name] = new_name
+        initialized_variable_names[new_name] = 1
+        initialized_variable_names[new_name + ":0"] = 1
 
     return (assignment_map, initialized_variable_names)
 
 
-def get_albert_assignment_map_from_checkpoint(tvars, init_checkpoint, num_of_group=0):
+def get_albert_assignment_map_from_checkpoint(tvars, init_checkpoint, num_of_group=0, prefix=''):
     """Compute the union of the current variables and checkpoint variables."""
     assignment_map = {}
     initialized_variable_names = {}
@@ -62,37 +63,41 @@ def get_albert_assignment_map_from_checkpoint(tvars, init_checkpoint, num_of_gro
     else:
         assignment_map = collections.OrderedDict()
 
-    for name in name_to_variable:
-        if name in init_vars_name:
-            tvar_name = name
+    for new_name in name_to_variable:
+        if prefix:
+            old_name = new_name.lstrip(prefix)
+        else:
+            old_name = new_name
+        if old_name in init_vars_name:
+            tvar_name = old_name
         elif (re.sub(r"/group_\d+/", "/group_0/",
-                     six.ensure_str(name)) in init_vars_name and
+                     six.ensure_str(old_name)) in init_vars_name and
               num_of_group > 1):
-            tvar_name = re.sub(r"/group_\d+/", "/group_0/", six.ensure_str(name))
-        elif (re.sub(r"/ffn_\d+/", "/ffn_1/", six.ensure_str(name))
+            tvar_name = re.sub(r"/group_\d+/", "/group_0/", six.ensure_str(old_name))
+        elif (re.sub(r"/ffn_\d+/", "/ffn_1/", six.ensure_str(old_name))
               in init_vars_name and num_of_group > 1):
-            tvar_name = re.sub(r"/ffn_\d+/", "/ffn_1/", six.ensure_str(name))
-        elif (re.sub(r"/attention_\d+/", "/attention_1/", six.ensure_str(name))
+            tvar_name = re.sub(r"/ffn_\d+/", "/ffn_1/", six.ensure_str(old_name))
+        elif (re.sub(r"/attention_\d+/", "/attention_1/", six.ensure_str(old_name))
               in init_vars_name and num_of_group > 1):
             tvar_name = re.sub(r"/attention_\d+/", "/attention_1/",
-                               six.ensure_str(name))
+                               six.ensure_str(old_name))
         else:
             continue
         if num_of_group > 0:
             group_matched = False
             for gid in range(1, num_of_group):
-                if (("/group_" + str(gid) + "/" in name) or
-                        ("/ffn_" + str(gid) + "/" in name) or
-                        ("/attention_" + str(gid) + "/" in name)):
+                if (("/group_" + str(gid) + "/" in new_name) or
+                        ("/ffn_" + str(gid) + "/" in new_name) or
+                        ("/attention_" + str(gid) + "/" in new_name)):
                     group_matched = True
-                    tf.logging.info("%s belongs to %dth", name, gid)
-                    assignment_map[gid][tvar_name] = name
+                    tf.logging.info("%s belongs to %dth", new_name, gid)
+                    assignment_map[gid][tvar_name] = new_name
             if not group_matched:
-                assignment_map[0][tvar_name] = name
+                assignment_map[0][tvar_name] = new_name
         else:
-            assignment_map[tvar_name] = name
-        initialized_variable_names[name] = 1
-        initialized_variable_names[six.ensure_str(name) + ":0"] = 1
+            assignment_map[tvar_name] = new_name
+        initialized_variable_names[new_name] = 1
+        initialized_variable_names[six.ensure_str(new_name) + ":0"] = 1
 
     return (assignment_map, initialized_variable_names)
 
@@ -109,7 +114,7 @@ def search_layer(layer_name):
             return var
 
 
-def init_checkpoints(init_checkpoint, model_type, print_vars=True):
+def init_checkpoints(init_checkpoint, model_type, print_vars=True, prefix=''):
     model_type = model_type.lower()
 
     fct_map = {
@@ -128,15 +133,22 @@ def init_checkpoints(init_checkpoint, model_type, print_vars=True):
     initialized_variable_names = {}
     if init_checkpoint:
         (assignment_map, initialized_variable_names) = fct_map[model_type](tvars,
-                                                                           init_checkpoint)
+                                                                           init_checkpoint, prefix)
         tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
 
     if print_vars:
-        tf.logging.info("  **** Model Variables ****")
+        vars_p = []
         for var in tvars:
             if var.name not in initialized_variable_names:
-                init_string = ", *NOT INIT FROM CKPT*"
-                tf.logging.info("  name = %s, shape = %s%s", var.name, var.shape, init_string)
+                vars_p.append([var.name, var.shape])
+
+        if vars_p:
+            tf.logging.info("  **** NEW Variables ****")
+            init_string = ", *NOT INIT FROM CKPT*"
+            for v in vars_p:
+                tf.logging.info("  name = %s, shape = %s%s", v[0], v[1], init_string)
+        else:
+            tf.logging.info("  **** ALL Variables RESTORED ****")
 
 
 def init_global_variables(session, init_checkpoint, model_type, print_vars=True):

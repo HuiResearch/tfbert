@@ -16,6 +16,18 @@ def cross_entropy_loss(logits, targets, depth):
     return loss
 
 
+def soft_cross_entropy(logits, targets):
+    log_probs = tf.nn.log_softmax(logits, dim=-1)
+    targets_prob = tf.nn.softmax(targets, dim=-1)
+    per_example_loss = -tf.reduce_sum(targets_prob * log_probs, axis=-1)
+    loss = tf.reduce_mean(per_example_loss)
+    return loss
+
+
+def mse_loss(logits, targets):
+    return tf.reduce_mean(tf.square(targets - logits))
+
+
 def focal_loss(prediction_tensor, target_tensor, alpha=0.25, gamma=2):
     r"""Compute focal loss for predictions.
         Multi-labels Focal loss formula:
