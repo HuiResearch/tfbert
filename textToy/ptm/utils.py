@@ -10,6 +10,44 @@ import tensorflow.compat.v1 as tf
 import tensorflow.contrib.layers as contrib_layers
 
 
+def mlm_weight(config, sequence_output, embedding_table, scope='cls/predictions'):
+    with tf.variable_scope(scope):
+        # We apply one more non-linear transformation before the output layer.
+        # This matrix is not used after pre-training.
+        with tf.variable_scope("transform"):
+            input_tensor = tf.layers.dense(
+                sequence_output,
+                units=config.hidden_size,
+                activation=get_activation(config.hidden_act),
+                kernel_initializer=create_initializer(
+                    config.initializer_range))
+            input_tensor = layer_norm(input_tensor)
+
+        # The output weights are the same as the input embeddings, but there is
+        # an output-only bias for each token.
+        output_bias = tf.get_variable(
+            "output_bias",
+            shape=[config.vocab_size],
+            initializer=tf.zeros_initializer())
+        logits = tf.matmul(input_tensor, embedding_table, transpose_b=True)
+        logits = tf.nn.bias_add(logits, output_bias)
+    return logits
+
+
+def seq_rel_weight(config, pooled_output, scope='cls/seq_relationship'):
+    with tf.variable_scope(scope):
+        output_weights = tf.get_variable(
+            "output_weights",
+            shape=[2, config.hidden_size],
+            initializer=create_initializer(config.initializer_range))
+        output_bias = tf.get_variable(
+            "output_bias", shape=[2], initializer=tf.zeros_initializer())
+
+        logits = tf.matmul(pooled_output, output_weights, transpose_b=True)
+        logits = tf.nn.bias_add(logits, output_bias)
+    return logits
+
+
 def gelu(x):
     """Gaussian Error Linear Unit.
 
@@ -341,4 +379,3 @@ def gather_indexes(sequence_tensor, positions):
                                       [batch_size * seq_length, width])
     output_tensor = tf.gather(flat_sequence_tensor, flat_positions)
     return output_tensor
-

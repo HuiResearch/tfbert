@@ -5,14 +5,55 @@
 @date: 2020/09/08
 """
 import tensorflow.compat.v1 as tf
-from .utils import create_initializer, get_dropout_prob, get_shape_list
+from .utils import (
+    create_initializer, get_dropout_prob, get_shape_list, mlm_weight, seq_rel_weight, gather_indexes)
 from .ckpt_utils import init_checkpoints
-from ..loss import cross_entropy_loss
 from ..nn import CRF
 from . import MODELS
 from ..config import CONFIGS
 from ..tokenizer import TOKENIZERS
 import numpy as np
+from ..loss import mlm_loss, cross_entropy_loss
+
+
+class TinySequenceClassification:
+    def __init__(self,
+                 model_type,
+                 config,
+                 num_classes,
+                 is_training,
+                 input_ids,
+                 input_mask=None,
+                 token_type_ids=None,
+                 dropout_prob=0.1
+                 ):
+        model_type = model_type.lower()
+        if model_type not in MODELS:
+            raise ValueError("Unsupported model option: {}, "
+                             "you can choose one of {}".format(model_type, "、".join(MODELS.keys())))
+
+        config.output_hidden_states = True
+        config.output_attentions = True
+
+        model = MODELS[model_type](
+            config, input_ids,
+            input_mask=input_mask,
+            token_type_ids=token_type_ids,
+            is_training=is_training
+        )
+        pooled_output = model.get_pooled_output()
+        all_encoder_layers = model.get_all_encoder_layers()
+        all_attention_probs = model.get_all_attention_probs()
+        with tf.variable_scope("classification"):
+            # 根据is_training 判断dropout
+            dropout_prob = get_dropout_prob(is_training, dropout_prob)
+
+            pooled_output = tf.nn.dropout(pooled_output,
+                                          rate=dropout_prob)
+            self.logits = tf.layers.dense(
+                pooled_output,
+                num_classes,
+                kernel_initializer=create_initializer(config.initializer_range))
 
 
 class SequenceClassification:
@@ -143,6 +184,43 @@ class MultiLabelClassification:
             per_example_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits,
                                                                        labels=tf.cast(label_ids, tf.float32))
             self.loss = tf.reduce_mean(per_example_loss)
+
+
+class PretrainingModel:
+    def __init__(self,
+                 model_type,
+                 config,
+                 input_ids,
+                 input_mask=None,
+                 token_type_ids=None,
+                 mlm_ids=None,
+                 mlm_weights=None,
+                 mlm_positions=None,
+                 nsp_labels=None,
+                 is_training=None,
+                 mode='mlm'):  # mlm, seq_rel, both
+
+        model = MODELS[model_type](
+            config, input_ids,
+            input_mask=input_mask,
+            token_type_ids=token_type_ids,
+            is_training=is_training
+        )
+
+        if mode in ['mlm', 'both']:
+            embedding_table = model.get_embedding_table()
+            sequence_output = model.get_sequence_output()
+            if mlm_positions is not None:
+                sequence_output = gather_indexes(sequence_output, mlm_positions)
+
+            self.mlm_logits = mlm_weight(config, sequence_output, embedding_table, scope='cls/predictions')
+            if all([el is not None for el in [mlm_ids, mlm_weights]]):
+                self.mlm_loss = mlm_loss(self.mlm_logits, mlm_ids, config.vocab_size, mlm_weights)
+        if mode in ['seq_rel', 'both']:
+            pooled_output = model.get_pooled_output()
+            self.nsp_logits = seq_rel_weight(config, pooled_output, scope='cls/seq_relationship')
+            if nsp_labels is not None:
+                self.nsp_loss = cross_entropy_loss(self.nsp_logits, nsp_labels, depth=2)
 
 
 class PTMExtractFeature:

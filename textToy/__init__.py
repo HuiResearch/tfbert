@@ -12,5 +12,5 @@ from .tokenizer import BertTokenizer, ALBertTokenizer, ElectraTokenizer, NeZhaTo
 from .ptm import (
     BertModel, ALBertModel, ELECTRAModel, NeZhaModel,
     SequenceClassification, TokenClassification, MODELS,
-    PTMExtractFeature, MultiLabelClassification)
+    PTMExtractFeature, MultiLabelClassification, PretrainingModel)
 from .utils import ProgressBar, set_seed

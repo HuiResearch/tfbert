@@ -25,7 +25,8 @@
     </select>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="修复优化器">
+    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="优化tokenizer">
+      <changelist_data name="huanghuidmml" email="m13021933043@163.com" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -71,6 +72,35 @@
       <recent name="G:\github\textToy\data\multi_label" />
     </key>
   </component>
+  <component name="RunManager">
+    <configuration name="a" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="textToy" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/a.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.a" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="SvnConfiguration">
     <configuration />
   </component>
@@ -83,7 +113,7 @@
       <updated>1600667842511</updated>
       <workItem from="1600667843882" duration="11793000" />
       <workItem from="1600743834154" duration="585000" />
-      <workItem from="1600783010508" duration="20947000" />
+      <workItem from="1600783010508" duration="21961000" />
     </task>
     <task id="LOCAL-00001" summary="update README.md">
       <created>1600743913116</created>
@@ -148,7 +178,14 @@
       <option name="project" value="LOCAL" />
       <updated>1600953932951</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="优化tokenizer">
+      <created>1601040152984</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1601040152984</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -184,13 +221,14 @@
     <MESSAGE value="修改readme" />
     <MESSAGE value="增加优化器" />
     <MESSAGE value="修复优化器" />
-    <option name="LAST_COMMIT_MESSAGE" value="修复优化器" />
+    <MESSAGE value="优化tokenizer" />
+    <option name="LAST_COMMIT_MESSAGE" value="优化tokenizer" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="842" y="382" key="#Notifications" timestamp="1600953980841">
+    <state x="842" y="382" key="#Notifications" timestamp="1601040265682">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="842" y="382" key="#Notifications/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600953980841" />
+    <state x="842" y="382" key="#Notifications/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601040265682" />
     <state x="782" y="415" key="GitRewordDialog" timestamp="1600744225425">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
@@ -199,13 +237,16 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="790" y="389" key="VCS.EditChangelistDialog/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600843535736" />
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1600953934148">
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1601040304288">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600953934148" />
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601040304288" />
     <state x="2162" y="87" width="1381" height="1027" maximized="true" key="dock-window-1" timestamp="1600830578488">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>
     <state x="2162" y="87" width="1381" height="1027" maximized="true" key="dock-window-1/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600830578488" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/textToy$a.coverage" NAME="a Coverage Results" MODIFIED="1601089381314" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

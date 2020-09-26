@@ -15,4 +15,6 @@ MODELS = {
     'nezha': NeZhaModel, 'electra': ELECTRAModel,
     'wobert': WoBertModel
 }
-from .finetune import SequenceClassification, TokenClassification, PTMExtractFeature, MultiLabelClassification
+from .finetune import (
+    SequenceClassification, TokenClassification,
+    PTMExtractFeature, MultiLabelClassification, PretrainingModel)
