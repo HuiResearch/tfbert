@@ -25,9 +25,8 @@
     </select>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="优化tokenizer">
-      <changelist_data name="huanghuidmml" email="m13021933043@163.com" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="增加 pretrain model">
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/ptm/finetune.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -42,6 +41,11 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="PREVIOUS_COMMIT_AUTHORS">
+      <list>
+        <option value="huanghuidmml &lt;m13021933043@163.com&gt;" />
+      </list>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GithubPullRequestsUISettings">
@@ -62,6 +66,7 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/images" />
+    <property name="settings.editor.selected.configurable" value="org.jetbrains.plugins.github.ui.GithubSettingsConfigurable" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -113,7 +118,7 @@
       <updated>1600667842511</updated>
       <workItem from="1600667843882" duration="11793000" />
       <workItem from="1600743834154" duration="585000" />
-      <workItem from="1600783010508" duration="21961000" />
+      <workItem from="1600783010508" duration="22405000" />
     </task>
     <task id="LOCAL-00001" summary="update README.md">
       <created>1600743913116</created>
@@ -185,7 +190,14 @@
       <option name="project" value="LOCAL" />
       <updated>1601040152984</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="增加 pretrain model">
+      <created>1601089432110</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1601089432110</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -222,7 +234,8 @@
     <MESSAGE value="增加优化器" />
     <MESSAGE value="修复优化器" />
     <MESSAGE value="优化tokenizer" />
-    <option name="LAST_COMMIT_MESSAGE" value="优化tokenizer" />
+    <MESSAGE value="增加 pretrain model" />
+    <option name="LAST_COMMIT_MESSAGE" value="增加 pretrain model" />
   </component>
   <component name="WindowStateProjectService">
     <state x="842" y="382" key="#Notifications" timestamp="1601040265682">
@@ -233,14 +246,22 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="782" y="415" key="GitRewordDialog/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600744225425" />
+    <state x="461" y="164" key="SettingsEditor" timestamp="1601089527545">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="461" y="164" key="SettingsEditor/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601089527545" />
     <state x="790" y="389" key="VCS.EditChangelistDialog" timestamp="1600843535736">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="790" y="389" key="VCS.EditChangelistDialog/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600843535736" />
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1601040304288">
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1601089540361">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601040304288" />
+    <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601089540361" />
+    <state x="753" y="433" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1601089715337">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="753" y="433" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601089715337" />
     <state x="2162" y="87" width="1381" height="1027" maximized="true" key="dock-window-1" timestamp="1600830578488">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>

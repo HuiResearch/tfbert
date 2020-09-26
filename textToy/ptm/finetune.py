@@ -214,7 +214,7 @@ class PretrainingModel:
                 sequence_output = gather_indexes(sequence_output, mlm_positions)
 
             self.mlm_logits = mlm_weight(config, sequence_output, embedding_table, scope='cls/predictions')
-            if all([el is not None for el in [mlm_ids, mlm_weights]]):
+            if all([el is not None for el in [mlm_ids, mlm_weights, mlm_positions]]):
                 self.mlm_loss = mlm_loss(self.mlm_logits, mlm_ids, config.vocab_size, mlm_weights)
         if mode in ['seq_rel', 'both']:
             pooled_output = model.get_pooled_output()
