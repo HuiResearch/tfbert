@@ -17,7 +17,7 @@ def mlm_weight(config, sequence_output, embedding_table, scope='cls/predictions'
         with tf.variable_scope("transform"):
             input_tensor = tf.layers.dense(
                 sequence_output,
-                units=config.hidden_size,
+                units=config.embedding_size,
                 activation=get_activation(config.hidden_act),
                 kernel_initializer=create_initializer(
                     config.initializer_range))

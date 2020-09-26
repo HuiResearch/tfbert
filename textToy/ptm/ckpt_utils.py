@@ -133,7 +133,7 @@ def init_checkpoints(init_checkpoint, model_type, print_vars=True, prefix=''):
     initialized_variable_names = {}
     if init_checkpoint:
         (assignment_map, initialized_variable_names) = fct_map[model_type](tvars,
-                                                                           init_checkpoint, prefix)
+                                                                           init_checkpoint, prefix=prefix)
         tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
 
     if print_vars:
