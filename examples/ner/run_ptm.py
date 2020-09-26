@@ -131,7 +131,7 @@ def get_model_fn(model_type, config, num_classes, add_crf):
             add_crf=add_crf
         )
         outputs = [model.predictions, inputs['label_ids'], inputs['input_mask']]
-        loss = model.loss
+        loss = model.loss / gradient_accumulation_steps
         return {'loss': loss, 'outputs': outputs}
 
     return model_fn

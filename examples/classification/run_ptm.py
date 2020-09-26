@@ -95,7 +95,7 @@ def get_model_fn(model_type, config, num_classes):
             num_classes=num_classes, is_training=is_training,
             **inputs)
         outputs = [model.logits, inputs['label_ids']]
-        loss = model.loss
+        loss = model.loss / gradient_accumulation_steps
         return {'loss': loss, 'outputs': outputs}
 
     return model_fn

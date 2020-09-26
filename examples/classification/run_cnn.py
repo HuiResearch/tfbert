@@ -142,7 +142,8 @@ def get_model_fn(max_seq_len):
             filter_sizes=[1, 3, 5, 7], num_filters=128,
             vocab_size=len(vocab2id),
             embedding_dim=128, num_classes=len(labels), dropout=0.3)
-        return {'loss': model.loss, 'outputs': [model.logits, inputs['label_ids']]}
+        return {'loss': model.loss / gradient_accumulation_steps,
+                'outputs': [model.logits, inputs['label_ids']]}
 
     return model_fn
 
