@@ -25,12 +25,8 @@
     </select>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="修复小bug">
+    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="修改examples">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/classification/run_cnn.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/run_cnn.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/classification/run_ptm.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/run_ptm.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/multi_label/run_ptm.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/multi_label/run_ptm.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/ner/run_ptm.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/ner/run_ptm.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -123,7 +119,7 @@
       <workItem from="1600667843882" duration="11793000" />
       <workItem from="1600743834154" duration="585000" />
       <workItem from="1600783010508" duration="24004000" />
-      <workItem from="1601091543353" duration="320000" />
+      <workItem from="1601091543353" duration="4412000" />
     </task>
     <task id="LOCAL-00001" summary="update README.md">
       <created>1600743913116</created>
@@ -216,7 +212,14 @@
       <option name="project" value="LOCAL" />
       <updated>1601090486962</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="修改examples">
+      <created>1601092017793</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1601092017793</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -255,7 +258,8 @@
     <MESSAGE value="优化tokenizer" />
     <MESSAGE value="增加 pretrain model" />
     <MESSAGE value="修复小bug" />
-    <option name="LAST_COMMIT_MESSAGE" value="修复小bug" />
+    <MESSAGE value="修改examples" />
+    <option name="LAST_COMMIT_MESSAGE" value="修改examples" />
   </component>
   <component name="WindowStateProjectService">
     <state x="842" y="382" key="#Notifications" timestamp="1601040265682">
@@ -290,10 +294,11 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="790" y="389" key="VCS.EditChangelistDialog/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600843535736" />
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1601090488327">
-      <screen x="0" y="0" width="1920" height="1040" />
+    <state x="2472" y="340" key="Vcs.Push.Dialog.v2" timestamp="1601092019298">
+      <screen x="1920" y="87" width="1920" height="1040" />
     </state>
     <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601090488327" />
+    <state x="2472" y="340" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601092019298" />
     <state x="753" y="433" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1601089715337">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
