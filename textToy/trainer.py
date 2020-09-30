@@ -157,11 +157,9 @@ class Trainer:
                 ckpt = os.path.join(model_name_or_path, self.model_name)
         else:
             ckpt = model_name_or_path
-        try:
-            self.saver.restore(self.session, save_path=ckpt)
-        except:
-            init_checkpoints(ckpt, self.model_type, True)
-            self.session.run(tf.global_variables_initializer())
+
+        init_checkpoints(ckpt, self.model_type, True)
+        self.session.run(tf.global_variables_initializer())
         self.inited = True
         tf.logging.info("  Load model from {}".format(ckpt))
 
@@ -269,14 +267,30 @@ class Trainer:
             self.process_grad_and_vars(grads_and_vars)
 
     def process_grad_and_vars(self, grads_and_vars):
-        gradients, self.variables = zip(*grads_and_vars)
+        gradients, variables = zip(*grads_and_vars)
+        #
+        # self.gradients = [tf.Variable(tf.zeros_like(v), trainable=False) for v in gradients]
+        self.gradients = []
+        self.variables = []
+        for g, v in zip(gradients, variables):
+            if g is not None:
+                self.gradients.append(tf.Variable(tf.zeros_like(g), trainable=False))
+            else:
+                self.gradients.append(None)
+            self.variables.append(v)
 
-        self.gradients = [tf.Variable(tf.zeros_like(v), trainable=False) for v in gradients]
+        gradients_accum_ops = []
 
-        gradients_accum_ops = [self.gradients[i].assign_add(grad) for i, grad in enumerate(gradients)]
+        for i, grad in enumerate(gradients):
+            if grad is not None:
+                gradients_accum_ops.append(self.gradients[i].assign_add(grad))
+
         self.backward_op = tf.group(*gradients_accum_ops, name="backward")  # 梯度累计op
 
-        grads_zero_ops = [gv.assign(tf.zeros_like(gv)) for gv in self.gradients]
+        grads_zero_ops = []
+        for gv in self.gradients:
+            if gv is not None:
+                grads_zero_ops.append(gv.assign(tf.zeros_like(gv)))
         self.zero_grad_op = tf.group(*grads_zero_ops, name='zero_grad')  # 梯度清零 op
 
     def compile(self, train_op=None, max_checkpoints=1, var_list=None):

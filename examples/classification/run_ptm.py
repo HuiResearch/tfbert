@@ -33,8 +33,8 @@ model_dir = 'bert_base'
 output_dir = "ckpt/classification"
 
 # batch size 需要是卡数的整倍数
-batch_size = 4
-gradient_accumulation_steps = 8  # 梯度累积步数
+batch_size = 32
+gradient_accumulation_steps = 1  # 梯度累积步数
 max_seq_length = 32
 learning_rate = 2e-5
 random_seed = 42

@@ -18,8 +18,14 @@ def cross_entropy_loss(logits, targets, depth):
 
 def mlm_loss(logits, targets, depth, label_weights):
     log_probs = tf.nn.log_softmax(logits, axis=-1)
-    one_hot_labels = tf.one_hot(targets, depth=depth, dtype=tf.float32)
-    per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
+
+    label_ids = tf.reshape(targets, [-1])
+    label_weights = tf.reshape(label_weights, [-1])
+
+    one_hot_labels = tf.one_hot(
+        label_ids, depth=depth, dtype=tf.float32)
+
+    per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
     numerator = tf.reduce_sum(label_weights * per_example_loss)
     denominator = tf.reduce_sum(label_weights) + 1e-5
     loss = numerator / denominator
