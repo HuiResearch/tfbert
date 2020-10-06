@@ -96,8 +96,8 @@ trainer.build_model(get_model_fn())
 t_total = num_train_batch * epochs // gradient_accumulation_steps
 
 # 训练的话创建train_op
-# 使用多卡训练器MultiDeviceTrainer时，创建train_op需要传入trainer的loss和grads_and_vars
-# 因为这里的loss和梯度在训练器中已经自动求多卡的平均了。
+# 使用多卡训练器MultiDeviceTrainer时，创建train_op需要传入trainer的gradients和variables
+# 因为这里的梯度在训练器中已经自动求多卡的平均了。
 train_op = create_optimizer(
     init_lr=learning_rate,
     gradients=trainer.gradients,
