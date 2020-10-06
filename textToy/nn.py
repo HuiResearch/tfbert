@@ -44,9 +44,9 @@ class Conv2D:
     def __init__(self, input_tensor, filter_shape: List[int], strides=None, padding="VALID"):
         if strides is None:
             strides = [1, 1, 1, 1]
-        W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1), name="weight")
-        b = tf.Variable(tf.constant(0.1, shape=[filter_shape[-1]]), name="bias")
-        conv = tf.nn.conv2d(input_tensor, W, strides=strides, padding=padding, name='conv')
+        W = tf.get_variable(name='weight', shape=filter_shape, initializer=create_initializer(0.1))
+        b = tf.get_variable(name='bias', shape=[filter_shape[-1]], initializer=create_initializer(0.1))
+        conv = tf.nn.conv2d(input_tensor, W, strides=strides, padding=padding)
         self.output = tf.nn.relu(tf.nn.bias_add(conv, b), name="relu")
 
 
@@ -92,7 +92,7 @@ class Attention:
         seq_len, hidden_size = shape[1], shape[2]
 
         # 初始化一个权重向量，是可训练的参数
-        W = tf.Variable(tf.truncated_normal([hidden_size], stddev=0.1))
+        W = tf.get_variable(shape=[hidden_size], initializer=create_initializer(0.1))
 
         # 对输入tensor用激活函数做非线性转换
         M = tf.tanh(input_tensor)

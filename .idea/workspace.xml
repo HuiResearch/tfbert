@@ -27,7 +27,9 @@
   <component name="ChangeListManager">
     <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="修复trainer">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/textToy/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/classification/run_cnn.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/run_cnn.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/nn.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/nn.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/textToy/trainer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -123,7 +125,7 @@
       <workItem from="1601091543353" duration="4412000" />
       <workItem from="1601342761145" duration="405000" />
       <workItem from="1601471758129" duration="2267000" />
-      <workItem from="1601960845094" duration="1162000" />
+      <workItem from="1601960845094" duration="5328000" />
     </task>
     <task id="LOCAL-00001" summary="update README.md">
       <created>1600743913116</created>
@@ -244,7 +246,14 @@
       <option name="project" value="LOCAL" />
       <updated>1601961226970</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="修复trainer">
+      <created>1601962014427</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1601962014427</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -297,26 +306,26 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="782" y="415" key="GitRewordDialog/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600744225425" />
-    <state width="1877" height="282" key="GridCell.Tab.0.bottom" timestamp="1601961983471">
+    <state width="1877" height="282" key="GridCell.Tab.0.bottom" timestamp="1601963064142">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>
     <state width="1877" height="282" key="GridCell.Tab.0.bottom/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601091316716" />
-    <state width="1877" height="282" key="GridCell.Tab.0.bottom/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601961983471" />
-    <state width="1877" height="282" key="GridCell.Tab.0.center" timestamp="1601961983471">
+    <state width="1877" height="282" key="GridCell.Tab.0.bottom/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601963064142" />
+    <state width="1877" height="282" key="GridCell.Tab.0.center" timestamp="1601963064142">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>
     <state width="1877" height="282" key="GridCell.Tab.0.center/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601091316716" />
-    <state width="1877" height="282" key="GridCell.Tab.0.center/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601961983471" />
-    <state width="1877" height="282" key="GridCell.Tab.0.left" timestamp="1601961983471">
+    <state width="1877" height="282" key="GridCell.Tab.0.center/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601963064142" />
+    <state width="1877" height="282" key="GridCell.Tab.0.left" timestamp="1601963064142">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>
     <state width="1877" height="282" key="GridCell.Tab.0.left/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601091316716" />
-    <state width="1877" height="282" key="GridCell.Tab.0.left/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601961983471" />
-    <state width="1877" height="282" key="GridCell.Tab.0.right" timestamp="1601961983471">
+    <state width="1877" height="282" key="GridCell.Tab.0.left/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601963064142" />
+    <state width="1877" height="282" key="GridCell.Tab.0.right" timestamp="1601963064142">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>
     <state width="1877" height="282" key="GridCell.Tab.0.right/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601091316716" />
-    <state width="1877" height="282" key="GridCell.Tab.0.right/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601961983471" />
+    <state width="1877" height="282" key="GridCell.Tab.0.right/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601963064142" />
     <state x="2381" y="251" key="SettingsEditor" timestamp="1601473430892">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>
@@ -326,11 +335,11 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="790" y="389" key="VCS.EditChangelistDialog/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600843535736" />
-    <state x="2472" y="340" key="Vcs.Push.Dialog.v2" timestamp="1601961277169">
+    <state x="2472" y="340" key="Vcs.Push.Dialog.v2" timestamp="1601962015821">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>
     <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1601090488327" />
-    <state x="2472" y="340" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601961277169" />
+    <state x="2472" y="340" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601962015821" />
     <state x="2673" y="520" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1601960855022">
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>
@@ -340,8 +349,12 @@
       <screen x="1920" y="87" width="1920" height="1040" />
     </state>
     <state x="2162" y="87" width="1381" height="1027" maximized="true" key="dock-window-1/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600830578488" />
+    <state x="2543" y="312" width="672" height="678" key="search.everywhere.popup" timestamp="1601962579406">
+      <screen x="1920" y="87" width="1920" height="1040" />
+    </state>
+    <state x="2543" y="312" width="672" height="678" key="search.everywhere.popup/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601962579406" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/textToy$a.coverage" NAME="a Coverage Results" MODIFIED="1601961983464" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/textToy$a.coverage" NAME="a Coverage Results" MODIFIED="1601963064137" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

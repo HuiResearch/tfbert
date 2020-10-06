@@ -44,7 +44,7 @@ class TextCNN:
         embedding = tf.expand_dims(embedding, -1)
         pooled_outputs = []
         for i, filter_size in enumerate(filter_sizes):
-            with tf.name_scope("conv_{}".format(filter_size)):
+            with tf.variable_scope("conv_{}".format(filter_size)):
                 filter_shape = [filter_size, embedding_dim, 1, num_filters]
                 h = Conv2D(embedding, filter_shape).output
                 pooled = MaxPool(h, ksize=[1, seq_length - filter_size + 1, 1, 1]).output
@@ -52,7 +52,7 @@ class TextCNN:
         conv_output = tf.concat(pooled_outputs, 3)
         conv_output = tf.reshape(conv_output, [-1, num_filters * len(filter_sizes)])
 
-        with tf.name_scope("classifier"):
+        with tf.variable_scope("classifier"):
             dropout = get_dropout_prob(is_training, dropout_prob=dropout)
             conv_output = tf.nn.dropout(conv_output, rate=dropout)
             self.logits = tf.layers.dense(
