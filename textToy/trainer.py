@@ -9,13 +9,14 @@ import numpy as np
 from .gpu_utils import average_grads_and_vars
 import tensorflow.compat.v1 as tf
 from .ptm.ckpt_utils import init_checkpoints, get_save_vars
+from . import MODELS
 
 
 class Trainer:
     model_name = "model.ckpt"
 
     def __init__(self,
-                 model_type,
+                 model_type=None,
                  output_types=None,
                  output_shapes=None,
                  device='gpu'):
@@ -157,9 +158,11 @@ class Trainer:
                 ckpt = os.path.join(model_name_or_path, self.model_name)
         else:
             ckpt = model_name_or_path
-
-        init_checkpoints(ckpt, self.model_type, True)
-        self.session.run(tf.global_variables_initializer())
+        if self.model_type is not None and self.model_type in MODELS.keys():
+            init_checkpoints(ckpt, self.model_type, True)
+            self.session.run(tf.global_variables_initializer())
+        else:
+            self.saver.restore(self.session, ckpt)
         self.inited = True
         tf.logging.info("  Load model from {}".format(ckpt))
 
