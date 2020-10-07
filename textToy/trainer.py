@@ -236,8 +236,7 @@ class Trainer:
                 if 'loss' in output:
                     all_vars = tf.trainable_variables()
                     grads = tf.gradients(output['loss'], all_vars)
-                    print(self.get_inputs(device))
-                    print(grads)
+
                     grads_and_vars = list(zip(grads, all_vars))
 
                     tower_losses.append(output['loss'])

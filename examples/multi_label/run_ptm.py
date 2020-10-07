@@ -6,6 +6,7 @@
 """
 import os
 import platform
+import argparse
 import tensorflow.compat.v1 as tf
 from textToy.data.classification import (
     InputExample, convert_examples_to_features,
@@ -26,24 +27,27 @@ else:
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
-model_type = 'bert'
-data_dir = 'data/multi_label'
-model_dir = 'bert_base'
-output_dir = "ckpt/multi_label"
+parser = argparse.ArgumentParser()
 
-batch_size = 32
-max_seq_length = 128
-learning_rate = 2e-5
-random_seed = 42
-threads = 8
-epochs = 4
+parser.add_argument('--model_type', default='bert', type=str, help="模型类型")
+parser.add_argument('--data_dir', default='data/multi_label', type=str, help="数据地址")
+parser.add_argument('--model_dir', default='bert_base', type=str, help="模型地址")
+parser.add_argument('--output_dir', default='ckpt/multi_label', type=str, help="输出文件夹")
+parser.add_argument('--batch_size', default=32, type=int, help="批次大小")
+parser.add_argument('--max_seq_length', default=128, type=int, help="最大句子长度")
+parser.add_argument('--learning_rate', default=2e-5, type=float, help="学习率")
+parser.add_argument('--random_seed', default=42, type=int, help="随机种子")
+parser.add_argument('--threads', default=8, type=int, help="数据处理线程数")
+parser.add_argument('--epochs', default=4, type=int, help="epochs")
+parser.add_argument('--gradient_accumulation_steps', default=1, type=int, help="梯度累积步数")
+
+args = parser.parse_args()
+
 labels = ['DV%d' % (i + 1) for i in range(20)]
 threshold = [0.5] * len(labels)
 
-gradient_accumulation_steps = 1
-
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+if not os.path.exists(args.output_dir):
+    os.makedirs(args.output_dir)
 
 
 def create_examples(filename):
@@ -64,13 +68,13 @@ def create_examples(filename):
 
 
 def load_dataset(set_type, tokenizer):
-    examples = create_examples(os.path.join(data_dir, set_type + '.json'))
+    examples = create_examples(os.path.join(args.data_dir, set_type + '.json'))
 
     features = convert_examples_to_features(examples, tokenizer,
-                                            max_length=max_seq_length, set_type=set_type,
+                                            max_length=args.max_seq_length, set_type=set_type,
                                             label_list=labels, is_multi_label=True,
-                                            use_multi_threads=True, threads=threads)
-    dataset, steps_one_epoch = create_dataset_by_gen(features, batch_size, set_type, is_multi_label=True)
+                                            use_multi_threads=True, threads=args.threads)
+    dataset, steps_one_epoch = create_dataset_by_gen(features, args.batch_size, set_type, is_multi_label=True)
     return dataset, steps_one_epoch
 
 
@@ -112,16 +116,16 @@ def get_model_fn(model_type, config, num_classes):
             **inputs
         )
         outputs = [model.predictions, inputs['label_ids']]
-        loss = model.loss / gradient_accumulation_steps
+        loss = model.loss / args.gradient_accumulation_steps
         return {'loss': loss, 'outputs': outputs}
 
     return model_fn
 
 
 def main():
-    set_seed(random_seed)
-    config = CONFIGS[model_type].from_pretrained(model_dir)
-    tokenizer = TOKENIZERS[model_type].from_pretrained(model_dir, do_lower_case=True)
+    set_seed(args.random_seed)
+    config = CONFIGS[args.model_type].from_pretrained(args.model_dir)
+    tokenizer = TOKENIZERS[args.model_type].from_pretrained(args.model_dir, do_lower_case=True)
 
     train_dataset, num_train_batch = load_dataset('train', tokenizer)
     test_dataset, num_test_batch = load_dataset('test', tokenizer)
@@ -129,15 +133,15 @@ def main():
     output_types, output_shapes = return_types_and_shapes(for_trainer=True, is_multi_label=True)
 
     trainer = Trainer(
-        model_type, output_types, output_shapes, device='gpu'
+        args.model_type, output_types, output_shapes, device='gpu'
     )
 
-    trainer.build_model(get_model_fn(model_type, config, len(labels)))
+    trainer.build_model(get_model_fn(args.model_type, config, len(labels)))
 
-    t_total = num_train_batch * epochs // gradient_accumulation_steps
+    t_total = num_train_batch * args.epochs // args.gradient_accumulation_steps
 
     train_op = create_optimizer(
-        init_lr=learning_rate,
+        init_lr=args.learning_rate,
         gradients=trainer.gradients,
         variables=trainer.variables,
         num_train_steps=t_total,
@@ -149,25 +153,25 @@ def main():
     trainer.build_handle(train_dataset, 'train')
     trainer.build_handle(test_dataset, 'test')
 
-    trainer.from_pretrained(model_dir)
+    trainer.from_pretrained(args.model_dir)
 
     tf.logging.info("***** Running training *****")
-    tf.logging.info("  Num epochs = {}".format(epochs))
-    tf.logging.info("  batch size = {}".format(batch_size))
-    tf.logging.info("  Gradient Accumulation steps = {}".format(gradient_accumulation_steps))
-    tf.logging.info("  Total train batch size (accumulation) = {}".format(batch_size * gradient_accumulation_steps))
+    tf.logging.info("  Num epochs = {}".format(args.epochs))
+    tf.logging.info("  batch size = {}".format(args.batch_size))
+    tf.logging.info("  Gradient Accumulation steps = {}".format(args.gradient_accumulation_steps))
+    tf.logging.info("  Total train batch size (accumulation) = {}".format(args.batch_size * args.gradient_accumulation_steps))
     tf.logging.info("  optimizer steps = %d", t_total)
     tf.logging.info("  Num devices = {}".format(trainer.num_devices))
     tf.logging.info("  Num params = {}".format(trainer.num_params))
 
     best_score = 0.
-    for epoch in range(epochs):
+    for epoch in range(args.epochs):
         epoch_iter = bar_fn(range(num_train_batch), desc='epoch {} '.format(epoch + 1))
         for step in epoch_iter:
             train_loss = trainer.backward()
             epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
 
-            if (step + 1) % gradient_accumulation_steps == 0:
+            if (step + 1) % args.gradient_accumulation_steps == 0:
                 trainer.train_step()
                 trainer.zero_grad()
 
@@ -175,19 +179,19 @@ def main():
         score = multi_label_metric(y_true, y_pred, label_list=labels)['dict_result']['micro macro avg']['f1-score']
         if score > best_score:
             best_score = score
-            trainer.save_pretrained(output_dir)
-            config.save_pretrained(output_dir)
-            tokenizer.save_pretrained(output_dir)
+            trainer.save_pretrained(args.output_dir)
+            config.save_pretrained(args.output_dir)
+            tokenizer.save_pretrained(args.output_dir)
         tf.logging.info("***** eval results *****")
         tf.logging.info(" global step : {}".format(trainer.global_step))
         tf.logging.info(" eval score : {:.4f}".format(score))
         tf.logging.info(" best score : {:.4f}".format(best_score))
 
     tf.logging.info("***** Running Test *****")
-    trainer.from_pretrained(output_dir)
+    trainer.from_pretrained(args.output_dir)
     y_true, y_pred = predict(trainer, num_test_batch, 'test')
     report = multi_label_metric(y_true, y_pred, label_list=labels)['string_result']
-    open(os.path.join(output_dir, 'result.txt'), 'w', encoding='utf-8').write(report)
+    open(os.path.join(args.output_dir, 'result.txt'), 'w', encoding='utf-8').write(report)
     tf.logging.info("***** test results *****")
     report = report.split('\n')
     for r in report:
