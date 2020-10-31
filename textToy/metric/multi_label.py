@@ -76,14 +76,14 @@ def multi_label_metric(y_true, y_pred, label_list):
         sump += p
         sumr += r
         for z in result[i].keys():
-            y[z] += result[i][z]  # 累积总的tp、fp、fn、tn,计算宏平均
+            y[z] += result[i][z]  # 累积总的tp、fp、fn、tn,计算微平均
 
     report += '\n'
 
-    macro_p, macro_r, macro_f = get_value(y)
-    micro_p = sump * 1.0 / len(result)
-    micro_r = sumr * 1.0 / len(result)
-    micro_f = sumf * 1.0 / len(result)
+    micro_p, micro_r, micro_f = get_value(y)
+    macro_p = sump * 1.0 / len(result)
+    macro_r = sumr * 1.0 / len(result)
+    macro_f = sumf * 1.0 / len(result)
 
     average_micro_macro_f = (macro_f + micro_f) / 2.0  # 这是法研杯要素抽取的评价指标，两者平均
     average_micro_macro_p = (macro_p + micro_p) / 2.0
