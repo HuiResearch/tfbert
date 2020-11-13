@@ -17,7 +17,6 @@ setup(
     package_dir={"": "src"},
     packages=find_packages("src"),
     install_requires=[
-        "numpy",
         "tensorflow == 1.14",
     ],
     python_requires=">=3.6.0"
