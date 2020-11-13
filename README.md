@@ -41,7 +41,7 @@ import tensorflow.compat.v1 as tf
 #### **Config 和 Tokenizer**
 使用方法和transformers一样
 ```python
-from textToy import BertTokenizer, BertConfig
+from src.textToy import BertTokenizer, BertConfig
 
 config = BertConfig.from_pretrained('config_path')
 tokenizer = BertTokenizer.from_pretrained('vocab_path', do_lower_case=True)
@@ -55,8 +55,8 @@ tokenizer.save_pretrained("save_path")
 #### **Trainer**
 ```python
 import tensorflow.compat.v1 as tf
-from textToy import Trainer
-from textToy.optimizer import create_optimizer
+from src.textToy import Trainer
+from src.textToy.optimizer import create_optimizer
 
 # 创建dataset
 def create_dataset(set_type):

@@ -25,9 +25,51 @@
     </select>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="update">
-      <change afterPath="$PROJECT_DIR$/textToy/recompute.py" afterDir="false" />
+    <list default="true" id="f80aa361-c306-4253-86e4-23e080f6f40c" name="Default Changelist" comment="修正多标签分类评价指标">
+      <change afterPath="$PROJECT_DIR$/setup.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/classification/export.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/export.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/classification/predict.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/predict.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/classification/run_cnn.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/run_cnn.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/classification/run_ptm.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/classification/run_ptm.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/multi_label/run_ptm.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/multi_label/run_ptm.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/ner/export.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/ner/export.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/ner/run_ptm.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/ner/run_ptm.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/config/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/config/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/config/base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/config/base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/config/ptm.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/config/ptm.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/data/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/data/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/data/classification.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/data/classification.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/data/ner.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/data/ner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/gpu_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/gpu_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/loss.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/loss.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/metric/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/metric/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/metric/multi_label.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/metric/multi_label.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/metric/ner.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/metric/ner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/nn.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/nn.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/optimizer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/ptm/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/albert.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/ptm/albert.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/ptm/base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/bert.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/ptm/bert.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/ckpt_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/ptm/ckpt_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/electra.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/ptm/electra.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/embedding.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/ptm/embedding.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/ptm/finetune.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/nezha.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/ptm/nezha.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/transformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/ptm/transformer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/ptm/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/ptm/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/recompute.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/recompute.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/serving.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/serving.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/tokenizer/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/tokenizer/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/tokenizer/albert.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/tokenizer/albert.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/tokenizer/base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/tokenizer/base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/tokenizer/bert.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/tokenizer/bert.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/tokenizer/wobert.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/tokenizer/wobert.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/trainer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/textToy/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/textToy/utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -83,6 +125,9 @@
     <property name="settings.editor.selected.configurable" value="org.jetbrains.plugins.github.ui.GithubSettingsConfigurable" />
   </component>
   <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="G:\github\textToy\src" />
+    </key>
     <key name="CopyFile.RECENT_KEYS">
       <recent name="G:\github\textToy\images" />
       <recent name="G:\github\textToy" />
@@ -167,6 +212,12 @@
       <workItem from="1603077302229" duration="581000" />
       <workItem from="1603532621453" duration="615000" />
       <workItem from="1603782131299" duration="558000" />
+      <workItem from="1604122017574" duration="347000" />
+      <workItem from="1604404683339" duration="639000" />
+      <workItem from="1604456282821" duration="608000" />
+      <workItem from="1604738582712" duration="1356000" />
+      <workItem from="1604752043209" duration="11000" />
+      <workItem from="1605255101656" duration="433000" />
     </task>
     <task id="LOCAL-00001" summary="update README.md">
       <created>1600743913116</created>
@@ -308,7 +359,14 @@
       <option name="project" value="LOCAL" />
       <updated>1602056923483</updated>
     </task>
-    <option name="localTasksCounter" value="21" />
+    <task id="LOCAL-00021" summary="修正多标签分类评价指标">
+      <created>1604122267898</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1604122267898</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -351,7 +409,8 @@
     <MESSAGE value="修复trainer" />
     <MESSAGE value="修复textCNN多卡失败问题" />
     <MESSAGE value="update" />
-    <option name="LAST_COMMIT_MESSAGE" value="update" />
+    <MESSAGE value="修正多标签分类评价指标" />
+    <option name="LAST_COMMIT_MESSAGE" value="修正多标签分类评价指标" />
   </component>
   <component name="WindowStateProjectService">
     <state x="2762" y="469" key="#Notifications" timestamp="1601342840794">
@@ -392,11 +451,11 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="790" y="389" key="VCS.EditChangelistDialog/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1600843535736" />
-    <state x="552" y="253" key="Vcs.Push.Dialog.v2" timestamp="1602056995927">
-      <screen x="0" y="0" width="1920" height="1040" />
+    <state x="2472" y="340" key="Vcs.Push.Dialog.v2" timestamp="1604122271122">
+      <screen x="1920" y="87" width="1920" height="1040" />
     </state>
     <state x="552" y="253" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1602056995927" />
-    <state x="2472" y="340" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1601966201911" />
+    <state x="2472" y="340" key="Vcs.Push.Dialog.v2/1920.87.1920.1040/0.0.1920.1040@1920.87.1920.1040" timestamp="1604122271122" />
     <state x="753" y="433" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1602072397570">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
