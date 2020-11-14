@@ -8,7 +8,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="textToy",
-    version="0.0.1",
+    version="0.0.2",
     author="huanghui",
     author_email="m130219330432163.com",
     description="A simple tool for pretrain model",
