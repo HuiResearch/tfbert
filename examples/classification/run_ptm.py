@@ -11,7 +11,7 @@ from textToy.data.classification import (
     create_dataset_by_gen, return_types_and_shapes)
 from textToy import (SequenceClassification,
                      CONFIGS, TOKENIZERS,
-                     set_seed, ProgressBar, device_count)
+                     set_seed, ProgressBar, get_devices)
 from tqdm import tqdm
 import pandas as pd
 from textToy.optimizer import create_optimizer
@@ -50,7 +50,7 @@ if not use_torch_mode and gradient_accumulation_steps > 1:
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
-batch_size = batch_size * device_count()
+batch_size = batch_size * len(get_devices())
 
 
 def create_examples(filename):

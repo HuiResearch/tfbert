@@ -8,7 +8,7 @@ import time
 import random
 import numpy as np
 import tensorflow.compat.v1 as tf
-import os
+from tensorflow.python.client import device_lib
 
 
 def set_seed(seed):
@@ -22,12 +22,20 @@ def set_seed(seed):
     tf.set_random_seed(seed)
 
 
-def device_count():
-    devices = os.getenv("CUDA_VISIBLE_DEVICES")
-    if devices is None:
-        return 1
-    else:
-        return len(list(map(int, devices.split(','))))
+def gpu_is_available():
+    local_device_protos = device_lib.list_local_devices()
+    num_gpus = sum([1 for d in local_device_protos if d.device_type == 'GPU'])
+    if not num_gpus:
+        return False
+    return True
+
+
+def get_devices():
+    local_device_protos = device_lib.list_local_devices()
+    gpus = [d.name for d in local_device_protos if d.device_type == 'GPU']
+    if not gpus:
+        return ['/device:CPU:0']
+    return gpus
 
 
 # 自定义进度条工具

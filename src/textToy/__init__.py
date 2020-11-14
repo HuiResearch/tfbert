@@ -12,5 +12,5 @@ from .ptm import (
     BertModel, ALBertModel, ELECTRAModel, NeZhaModel,
     SequenceClassification, TokenClassification, MODELS,
     PTMExtractFeature, MultiLabelClassification, PretrainingModel)
-from .utils import ProgressBar, set_seed, device_count
+from .utils import ProgressBar, set_seed, gpu_is_available, get_devices
 from .trainer import Trainer

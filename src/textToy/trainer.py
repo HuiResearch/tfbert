@@ -9,7 +9,7 @@ import numpy as np
 from .gpu_utils import average_grads_and_vars
 import tensorflow.compat.v1 as tf
 from .ptm.ckpt_utils import init_checkpoints, get_save_vars
-from . import MODELS
+from . import MODELS, get_devices
 
 
 class Trainer:
@@ -57,11 +57,7 @@ class Trainer:
         tf.logging.set_verbosity(tf.logging.INFO)
 
         # 获取环境变量的devices
-        devices = os.getenv("CUDA_VISIBLE_DEVICES")
-        if devices is None:
-            self.devices = [0]
-        else:
-            self.devices = list(map(int, devices.split(',')))
+        self.devices = get_devices()
 
         # gpu还是cpu环境
         self.device_type = device
@@ -237,7 +233,7 @@ class Trainer:
 
         for i, device in enumerate(self.devices):
             reuse = True if i > 0 else None
-            with tf.device('/{}:{}'.format(self.device_type, i)), \
+            with tf.device(device), \
                  tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
                 output = model_fn(self.get_inputs(device), self.is_training)
 
