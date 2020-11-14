@@ -19,7 +19,9 @@ class Trainer:
                  model_type=None,
                  output_types=None,
                  output_shapes=None,
-                 device='gpu'):
+                 device='gpu',
+                 use_xla=False,
+                 use_torch_mode=False):
         """
         tensorflow 模型多卡训练器，
         如需使用多卡，需要设置好环境变量CUDA_VISIBLE_DEVICES=0,1,2,3 (卡由自己定义，这里表示使用0 1 2 3 四块卡)
@@ -47,7 +49,11 @@ class Trainer:
         :param model_type:
         :param output_types:
         :param output_shapes:
+        :param use_xla:  是否开启xla加速
+        :param use_torch_mode: 是否使用pytorch一样的backward式训练方式，可以支持梯度累积，
+                               如果为False，训练时直接优化，没有backward和zero grad
         """
+        self.use_torch_mode = use_torch_mode
         tf.logging.set_verbosity(tf.logging.INFO)
 
         # 获取环境变量的devices
@@ -84,6 +90,8 @@ class Trainer:
         self.model_type = model_type
 
         sess_conf = tf.ConfigProto()
+        if use_xla:
+            sess_conf.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
         sess_conf.gpu_options.allow_growth = True
         sess_conf.allow_soft_placement = True
         self.inited = False
@@ -268,7 +276,10 @@ class Trainer:
         self.loss = loss
         self.outputs = new_outputs
         if grads_and_vars is not None:
-            self.process_grad_and_vars(grads_and_vars)
+            if self.use_torch_mode:
+                self.process_grad_and_vars(grads_and_vars)
+            else:
+                self.gradients, self.variables = zip(*grads_and_vars)
 
     def process_grad_and_vars(self, grads_and_vars):
         gradients, variables = zip(*grads_and_vars)
@@ -337,8 +348,14 @@ class Trainer:
         """
         训练一步
         """
-        self.session.run(self.train_op)
+        loss = None
+        if self.use_torch_mode:
+            self.session.run(self.train_op)
+        else:
+            _, loss = self.session.run([self.train_op, self.loss],
+                                       feed_dict={self.is_training: True, self.handle: self.train_handle})
         self.global_step += 1
+        return loss
 
     def eval_step(self):
         """

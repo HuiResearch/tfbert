@@ -89,7 +89,8 @@ output_shapes = {"input_ids": tf.TensorShape([None, None]),
 
 # 配置trainer，传入模型类型 bert、albert、electra、albert、nezha、wobert
 # 指定device为 gpu 或 cpu，默认的gpu
-trainer = Trainer('bert', output_types, output_shapes, device='gpu')
+trainer = Trainer(
+'bert', output_types, output_shapes, device='gpu', use_xla=use_xla, use_torch_mode=use_torch_mode)
 
 trainer.build_model(get_model_fn())
 
@@ -116,8 +117,15 @@ trainer.build_handle(dev_dataset, 'dev')
 trainer.from_pretrained('model_dir')
 
 """
-接下来可以调用 trainer.backward()  梯度累积，会返回loss
+接下来可以:
+use torch mode 为True：
+              trainer.backward()  梯度累积，会返回loss
               trainer.train_step() 优化参数，不返回
+              trainer.zero_grad()  梯度清零
+use torch mode 为False：
+              trainer.train_step()  调用优化器训练，返回loss
+
+验证预测方法：
               trainer.eval_step()  会返回loss、model_fn定义的outputs
               trainer.test_step()  返回model_fn定义的outputs
 进行训练、验证、预测
@@ -134,7 +142,24 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 查看[examples\classification\export.py](examples/classification/export.py)例子
 
 
+## **是否开启XLA加速、torch模式速度对比**
+
+使用rbt3进行实验对比，数据为example中的文本分类数据集。
+开启xla后刚开始训练需要等待一段时间开启xla模式，所以第一轮会比较慢，
+等开启后训练速度会加快很多。use_torch_mode 表示是否开启梯度累积模式训练，详情见更新记录。
+
+| use_torch_mode | use_xla | first epoch (s/epoch) | second epoch (s/epoch) | iter/s |
+| :------: | :------: | :------: | :------: | :------: |
+| False | False | 92 | 84 | 14.81 |
+| True | False | 106 | 97 | 12.73 |
+| True | True | 114 | 77 | 16.25 |
+| False | True | 106 | 70 | 17.97 |
+
 ## **更新记录**
+
+- 2020年11月14日 增加xla加速模块，可以在trainer设定use_xla传参决定是否开启，开启后可以加速训练。backward、zero_grad、train_step模式增加开启关闭操作，
+可以在trainer设定use_torch_mode决定是否取消该模式，取消后不支持梯度累积，直接调用train_step进行训练，
+这样会加快训练速度。具体见[examples\classification\run_ptm.py](examples/classification/run_ptm.py)
 
 - 2020年9月23日 增加梯度累积，采用trainer.backward(), trainer.zero_grad(), trainer.train_step() 一同进行训练，参考pytorch训练方式。
 - 2020年9月21日 第一次上传，支持模型bert、albert、electra、nezha、wobert。

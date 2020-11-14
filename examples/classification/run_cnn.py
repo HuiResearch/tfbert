@@ -156,6 +156,10 @@ if __name__ == '__main__':
     output_dir = "ckpt/cnn"
     gradient_accumulation_steps = 1  # 梯度累积步数
     learning_rate = 1e-4
+    use_xla = True  # 开启xla加速
+    use_torch_mode = False  # torch模式训练会先backward，然后再train，这样可以支持梯度累积，但是速度会慢
+    if not use_torch_mode and gradient_accumulation_steps > 1:
+        raise ValueError("if you want to use gradient accumulation, please consume use_torch_mode is True.")
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -178,7 +182,8 @@ if __name__ == '__main__':
     output_shapes = {"input_ids": tf.TensorShape([None, None]),
                      'label_ids': tf.TensorShape([None])}
 
-    trainer = Trainer('cnn', output_types, output_shapes, device='gpu')
+    trainer = Trainer(
+        'cnn', output_types, output_shapes, device='gpu', use_xla=use_xla, use_torch_mode=use_torch_mode)
 
     trainer.build_model(get_model_fn(max_seq_length))
 
@@ -213,12 +218,17 @@ if __name__ == '__main__':
     for epoch in range(epochs):
         epoch_iter = bar_fn(range(num_train_batch), desc='epoch {} '.format(epoch + 1))
         for step in epoch_iter:
-            train_loss = trainer.backward()
+            if use_torch_mode:
+                train_loss = trainer.backward()
+            else:
+                train_loss = trainer.train_step()
+            epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
             epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
 
             if (step + 1) % gradient_accumulation_steps == 0:
-                trainer.train_step()
-                trainer.zero_grad()
+                if use_torch_mode:
+                    trainer.train_step()
+                    trainer.zero_grad()
                 if trainer.global_step % logging_steps == 0 or trainer.global_step == t_total:
                     y_true, y_pred = predict(trainer, num_dev_batch, 'dev')
                     acc = accuracy_score(y_true, y_pred)

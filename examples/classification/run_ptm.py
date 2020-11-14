@@ -42,6 +42,11 @@ threads = 8  # 数据处理进程数
 epochs = 3
 labels = ['体育', '娱乐', '家居', '房产', '教育']
 logging_steps = 500  # 验证间隔步数，每个多少步验证一次模型
+use_xla = False  # 开启xla加速
+use_torch_mode = False  # torch模式训练会先backward，然后再train，这样可以支持梯度累积，但是速度会慢
+
+if not use_torch_mode and gradient_accumulation_steps > 1:
+    raise ValueError("if you want to use gradient accumulation, please consume use_torch_mode is True.")
 
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
@@ -115,7 +120,7 @@ def main():
 
     # 初始化trainer
     trainer = Trainer(
-        model_type, output_types, output_shapes, device='gpu'
+        model_type, output_types, output_shapes, device='gpu', use_xla=use_xla, use_torch_mode=use_torch_mode
     )
 
     # 构建模型
@@ -153,12 +158,16 @@ def main():
     for epoch in range(epochs):
         epoch_iter = bar_fn(range(num_train_batch), desc='epoch {} '.format(epoch + 1))
         for step in epoch_iter:
-            train_loss = trainer.backward()
+            if use_torch_mode:
+                train_loss = trainer.backward()
+            else:
+                train_loss = trainer.train_step()
             epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
 
             if (step + 1) % gradient_accumulation_steps == 0:
-                trainer.train_step()
-                trainer.zero_grad()
+                if use_torch_mode:
+                    trainer.train_step()
+                    trainer.zero_grad()
 
                 if trainer.global_step % logging_steps == 0 or trainer.global_step == t_total:
                     y_true, y_pred = predict(trainer, num_dev_batch, 'dev')

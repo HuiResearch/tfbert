@@ -40,8 +40,14 @@ parser.add_argument('--random_seed', default=42, type=int, help="随机种子")
 parser.add_argument('--threads', default=8, type=int, help="数据处理线程数")
 parser.add_argument('--epochs', default=4, type=int, help="epochs")
 parser.add_argument('--gradient_accumulation_steps', default=1, type=int, help="梯度累积步数")
+parser.add_argument('--use_xla', action="store_true", help="是否开启xla加速训练")
+parser.add_argument('--use_torch_mode', action="store_true", help="是否使用torch的backward训练模式，开启之后可以使用梯度累积")
 
 args = parser.parse_args()
+
+if not args.use_torch_mode and args.gradient_accumulation_steps > 1:
+    raise ValueError("if you want to use gradient accumulation, please consume use_torch_mode is True.")
+
 
 labels = ['DV%d' % (i + 1) for i in range(20)]
 threshold = [0.5] * len(labels)
@@ -133,7 +139,7 @@ def main():
     output_types, output_shapes = return_types_and_shapes(for_trainer=True, is_multi_label=True)
 
     trainer = Trainer(
-        args.model_type, output_types, output_shapes, device='gpu'
+        args.model_type, output_types, output_shapes, device='gpu', use_xla=args.use_xla, use_torch_mode=args.use_torch_mode
     )
 
     trainer.build_model(get_model_fn(args.model_type, config, len(labels)))
@@ -168,12 +174,16 @@ def main():
     for epoch in range(args.epochs):
         epoch_iter = bar_fn(range(num_train_batch), desc='epoch {} '.format(epoch + 1))
         for step in epoch_iter:
-            train_loss = trainer.backward()
+            if args.use_torch_mode:
+                train_loss = trainer.backward()
+            else:
+                train_loss = trainer.train_step()
             epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
 
             if (step + 1) % args.gradient_accumulation_steps == 0:
-                trainer.train_step()
-                trainer.zero_grad()
+                if args.use_torch_mode:
+                    trainer.train_step()
+                    trainer.zero_grad()
 
         y_true, y_pred = predict(trainer, num_test_batch, 'test')
         score = multi_label_metric(y_true, y_pred, label_list=labels)['dict_result']['micro macro avg']['f1-score']
