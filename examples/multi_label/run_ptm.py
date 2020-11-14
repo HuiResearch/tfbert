@@ -10,7 +10,7 @@ import argparse
 import tensorflow.compat.v1 as tf
 from textToy.data.classification import (
     InputExample, convert_examples_to_features,
-    create_dataset_by_gen, return_types_and_shapes)
+    create_dataset_from_slices, return_types_and_shapes)
 from textToy import (Trainer, MultiLabelClassification,
                      CONFIGS, TOKENIZERS,
                      set_seed, ProgressBar, get_devices)
@@ -81,7 +81,7 @@ def load_dataset(set_type, tokenizer):
                                             max_length=args.max_seq_length, set_type=set_type,
                                             label_list=labels, is_multi_label=True,
                                             threads=args.threads)
-    dataset, steps_one_epoch = create_dataset_by_gen(features, args.batch_size, set_type, is_multi_label=True)
+    dataset, steps_one_epoch = create_dataset_from_slices(features, args.batch_size, set_type, is_multi_label=True)
     return dataset, steps_one_epoch
 
 

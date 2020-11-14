@@ -21,7 +21,7 @@ def return_types_and_shapes(for_trainer):
     output_types = {"input_ids": tf.int32,
                     "input_mask": tf.int32,
                     "token_type_ids": tf.int32,
-                    'label_ids': tf.int64}
+                    'label_ids': tf.int32}
     output_shapes = {"input_ids": shape,
                      "input_mask": shape,
                      "token_type_ids": shape,
@@ -200,4 +200,34 @@ def create_dataset_by_gen(
         output_types,
         output_shapes
     )
+    return process_dataset(dataset, batch_size, len(features), set_type)
+
+
+def create_dataset_from_slices(
+        features, batch_size,
+        set_type='train',
+):
+    '''
+    通过生成器的方式包装dataset
+    :param features:
+    :param batch_size:
+    :param set_type:
+    :return:
+    '''
+    dataset = tf.data.Dataset.from_tensor_slices({
+        "input_ids":
+            tf.constant(
+                [f.input_ids for f in features],
+                dtype=tf.int32),
+        "input_mask":
+            tf.constant(
+                [f.input_mask for f in features],
+                dtype=tf.int32),
+        "token_type_ids":
+            tf.constant(
+                [f.token_type_ids for f in features],
+                dtype=tf.int32),
+        "label_ids":
+            tf.constant([f.label_id for f in features], dtype=tf.int32),
+    })
     return process_dataset(dataset, batch_size, len(features), set_type)
