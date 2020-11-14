@@ -11,7 +11,7 @@ from textToy.data.classification import (
     create_dataset_by_gen, return_types_and_shapes)
 from textToy import (SequenceClassification,
                      CONFIGS, TOKENIZERS,
-                     set_seed, ProgressBar)
+                     set_seed, ProgressBar, device_count)
 from tqdm import tqdm
 import pandas as pd
 from textToy.optimizer import create_optimizer
@@ -32,7 +32,6 @@ data_dir = 'data/classification'
 model_dir = 'bert_base'
 output_dir = "ckpt/classification"
 
-# batch size 需要是卡数的整倍数
 batch_size = 32
 gradient_accumulation_steps = 1  # 梯度累积步数
 max_seq_length = 32
@@ -50,6 +49,8 @@ if not use_torch_mode and gradient_accumulation_steps > 1:
 
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
+
+batch_size = batch_size * device_count()
 
 
 def create_examples(filename):
@@ -88,7 +89,7 @@ def load_dataset(set_type, tokenizer):
     examples = create_examples(os.path.join(data_dir, set_type + '.csv'))
     features = convert_examples_to_features(examples, tokenizer,
                                             max_length=max_seq_length, set_type=set_type,
-                                            label_list=labels, use_multi_threads=True, threads=threads)
+                                            label_list=labels, threads=threads)
     dataset, steps_one_epoch = create_dataset_by_gen(features, batch_size, set_type)
     return dataset, steps_one_epoch
 

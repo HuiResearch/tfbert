@@ -5,10 +5,8 @@
 @date: 2020/09/12
 """
 from functools import partial
-from multiprocessing import Pool, cpu_count
-from tqdm import tqdm
 import tensorflow.compat.v1 as tf
-from . import process_dataset, BaseClass
+from . import process_dataset, BaseClass, multiple_convert_examples_to_features, single_example_to_features
 from typing import List
 
 
@@ -139,38 +137,31 @@ def convert_examples_to_features(
         label_list=None,
         set_type='train',
         pad_token_label_id=0,
-        use_multi_threads=False,
         threads=1
 ) -> List[InputFeature]:
     label_map = None
     if label_list is not None:
         label_map = {label: i for i, label in enumerate(label_list)}
-    features = []
-    threads = min(threads, cpu_count())
-    if use_multi_threads and threads > 1:
-        with Pool(threads, initializer=convert_example_to_feature_init, initargs=(tokenizer,)) as p:
-            annotate_ = partial(
-                convert_example_to_feature,
-                max_length=max_length,
-                label_map=label_map,
-                pad_token_label_id=pad_token_label_id
-            )
-            features = list(
-                tqdm(
-                    p.imap(annotate_, examples, chunksize=32),
-                    total=len(examples),
-                    desc="convert examples to features"
-                )
-            )
+    annotate_ = partial(
+        convert_example_to_feature,
+        max_length=max_length,
+        label_map=label_map,
+        pad_token_label_id=pad_token_label_id
+    )
+
+    if threads > 1:
+        features = multiple_convert_examples_to_features(
+            examples,
+            annotate_=annotate_,
+            initializer=convert_example_to_feature_init,
+            initargs=(tokenizer,),
+            threads=threads
+        )
     else:
         convert_example_to_feature_init(tokenizer)
-        for example in tqdm(examples, desc="convert examples to features"):
-            features.append(convert_example_to_feature(
-                example,
-                max_length=max_length,
-                label_map=label_map,
-                pad_token_label_id=pad_token_label_id
-            ))
+        features = single_example_to_features(
+            examples, annotate_=annotate_
+        )
     new_features = []
     i = 0
     for feature in features:

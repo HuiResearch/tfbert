@@ -8,6 +8,7 @@ import time
 import random
 import numpy as np
 import tensorflow.compat.v1 as tf
+import os
 
 
 def set_seed(seed):
@@ -19,6 +20,14 @@ def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
     tf.set_random_seed(seed)
+
+
+def device_count():
+    devices = os.getenv("CUDA_VISIBLE_DEVICES")
+    if devices is None:
+        return 1
+    else:
+        return len(list(map(int, devices.split(','))))
 
 
 # 自定义进度条工具

@@ -15,7 +15,7 @@ from textToy.ptm.utils import get_dropout_prob, create_initializer
 from textToy.optimizer import create_optimizer
 import pandas as pd
 from collections import Counter
-from textToy import Trainer, set_seed, ProgressBar
+from textToy import Trainer, set_seed, ProgressBar, device_count
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score, classification_report
 import random
@@ -163,6 +163,8 @@ if __name__ == '__main__':
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
+    batch_size = batch_size * device_count()
 
     labels = ['体育', '娱乐', '家居', '房产', '教育']
     label2id = dict(zip(labels, range(len(labels))))

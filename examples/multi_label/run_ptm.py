@@ -13,7 +13,7 @@ from textToy.data.classification import (
     create_dataset_by_gen, return_types_and_shapes)
 from textToy import (Trainer, MultiLabelClassification,
                      CONFIGS, TOKENIZERS,
-                     set_seed, ProgressBar)
+                     set_seed, ProgressBar, device_count)
 from tqdm import tqdm
 import json
 from textToy.optimizer import create_optimizer
@@ -48,6 +48,7 @@ args = parser.parse_args()
 if not args.use_torch_mode and args.gradient_accumulation_steps > 1:
     raise ValueError("if you want to use gradient accumulation, please consume use_torch_mode is True.")
 
+args.batch_size = args.batch_size * device_count()
 
 labels = ['DV%d' % (i + 1) for i in range(20)]
 threshold = [0.5] * len(labels)
@@ -79,7 +80,7 @@ def load_dataset(set_type, tokenizer):
     features = convert_examples_to_features(examples, tokenizer,
                                             max_length=args.max_seq_length, set_type=set_type,
                                             label_list=labels, is_multi_label=True,
-                                            use_multi_threads=True, threads=args.threads)
+                                            threads=args.threads)
     dataset, steps_one_epoch = create_dataset_by_gen(features, args.batch_size, set_type, is_multi_label=True)
     return dataset, steps_one_epoch
 

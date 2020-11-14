@@ -6,6 +6,8 @@
 """
 import json
 import copy
+from multiprocessing import cpu_count, Pool
+from tqdm import tqdm
 
 
 class BaseClass:
@@ -16,6 +18,32 @@ class BaseClass:
     def __str__(self):
         return "{} \n {}".format(
             self.__class__.__name__, json.dumps(self.dict(), ensure_ascii=False))
+
+
+def single_example_to_features(
+        examples, annotate_, desc='convert examples to feature'):
+    features = []
+    for example in tqdm(examples, desc=desc):
+        features.append(annotate_(example))
+    return features
+
+
+def multiple_convert_examples_to_features(
+        examples,
+        annotate_,
+        initializer,
+        initargs,
+        threads,
+        desc='convert examples to feature'):
+    threads = min(cpu_count(), threads)
+    features = []
+    with Pool(threads, initializer=initializer, initargs=initargs) as p:
+        features = list(tqdm(
+            p.imap(annotate_, examples, chunksize=32),
+            total=len(examples),
+            desc=desc
+        ))
+    return features
 
 
 def process_dataset(dataset, batch_size, num_features, set_type):

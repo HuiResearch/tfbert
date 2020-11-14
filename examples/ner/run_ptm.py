@@ -11,7 +11,7 @@ from textToy.data.ner import (
     InputExample, convert_examples_to_features, create_dataset_by_gen, return_types_and_shapes)
 from textToy import (Trainer, TokenClassification,
                      CONFIGS, TOKENIZERS,
-                     set_seed, ProgressBar)
+                     set_seed, ProgressBar, device_count)
 from tqdm import tqdm
 from textToy.optimizer import create_optimizer
 from textToy.metric.ner import ner_report, prf_score
@@ -47,6 +47,8 @@ if not os.path.exists(output_dir):
 if not use_torch_mode and gradient_accumulation_steps > 1:
     raise ValueError("if you want to use gradient accumulation, please consume use_torch_mode is True.")
 
+batch_size = batch_size * device_count()
+
 
 def create_examples(filename):
     examples = []
@@ -76,8 +78,9 @@ def create_examples(filename):
 def load_dataset(set_type, tokenizer):
     examples = create_examples(os.path.join(data_dir, set_type + '.txt'))
     features = convert_examples_to_features(
-        examples, tokenizer, max_seq_length, labels, set_type, pad_token_label_id=0,
-        use_multi_threads=True, threads=threads
+        examples, tokenizer, max_seq_length, labels, set_type,
+        pad_token_label_id=0,
+        threads=threads
     )
 
     dataset, steps_one_epoch = create_dataset_by_gen(features, batch_size, set_type)

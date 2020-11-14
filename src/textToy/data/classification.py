@@ -5,14 +5,11 @@
 @date: 2020/09/09
 """
 from functools import partial
-from multiprocessing import Pool, cpu_count
-from tqdm import tqdm
 import tensorflow.compat.v1 as tf
-from . import process_dataset, BaseClass
+from . import process_dataset, BaseClass, multiple_convert_examples_to_features, single_example_to_features
 
 
 def return_types_and_shapes(for_trainer, is_multi_label=False):
-
     if for_trainer:
         shape = tf.TensorShape([None, None])
         label_shape = tf.TensorShape([None])
@@ -102,7 +99,6 @@ def convert_examples_to_features(
         label_list=None,
         set_type='train',
         is_multi_label=False,
-        use_multi_threads=False,
         threads=1
 ):
     '''
@@ -113,7 +109,6 @@ def convert_examples_to_features(
     :param label_list: 标签
     :param set_type:
     :param is_multi_label: 是否是多标签分类
-    :param use_multi_threads: 是否用多线程处理数据
     :param threads:
     :return:
     '''
@@ -121,32 +116,25 @@ def convert_examples_to_features(
     label_map = None
     if label_list is not None:
         label_map = {label: i for i, label in enumerate(label_list)}
-    features = []
-    threads = min(threads, cpu_count())
-    if use_multi_threads and threads > 1:
-        with Pool(threads, initializer=convert_example_to_feature_init, initargs=(tokenizer,)) as p:
-            annotate_ = partial(
-                convert_example_to_feature,
-                max_length=max_length,
-                label_map=label_map,
-                is_multi_label=is_multi_label
-            )
-            features = list(
-                tqdm(
-                    p.imap(annotate_, examples, chunksize=32),
-                    total=len(examples),
-                    desc="convert examples to features"
-                )
-            )
+    annotate_ = partial(
+        convert_example_to_feature,
+        max_length=max_length,
+        label_map=label_map,
+        is_multi_label=is_multi_label
+    )
+    if threads > 1:
+        features = multiple_convert_examples_to_features(
+            examples,
+            annotate_=annotate_,
+            initializer=convert_example_to_feature_init,
+            initargs=(tokenizer,),
+            threads=threads
+        )
     else:
         convert_example_to_feature_init(tokenizer)
-        for example in tqdm(examples, desc="convert examples to features"):
-            features.append(convert_example_to_feature(
-                example,
-                max_length=max_length,
-                label_map=label_map,
-                is_multi_label=is_multi_label
-            ))
+        features = single_example_to_features(
+            examples, annotate_=annotate_
+        )
     new_features = []
     i = 0
     for feature in features:
