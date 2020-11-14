@@ -19,7 +19,6 @@ class Trainer:
                  model_type=None,
                  output_types=None,
                  output_shapes=None,
-                 device='gpu',
                  use_xla=False,
                  use_torch_mode=False):
         """
@@ -58,9 +57,6 @@ class Trainer:
 
         # 获取环境变量的devices
         self.devices = get_devices()
-
-        # gpu还是cpu环境
-        self.device_type = device
 
         # 预定义节点
         self.train_op = None

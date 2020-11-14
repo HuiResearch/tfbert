@@ -185,7 +185,7 @@ if __name__ == '__main__':
                      'label_ids': tf.TensorShape([None])}
 
     trainer = Trainer(
-        'cnn', output_types, output_shapes, device='gpu', use_xla=use_xla, use_torch_mode=use_torch_mode)
+        'cnn', output_types, output_shapes, use_xla=use_xla, use_torch_mode=use_torch_mode)
 
     trainer.build_model(get_model_fn(max_seq_length))
 

@@ -19,7 +19,7 @@ tokenizer = BertTokenizer.from_pretrained(output_dir, do_lower_case=True)
 
 output_types, output_shapes = return_types_and_shapes(for_trainer=True)
 
-trainer = Trainer(model_type, output_types, output_shapes, device='gpu')
+trainer = Trainer(model_type, output_types, output_shapes)
 
 test_examples = create_examples(predict_file)
 test_features = convert_examples_to_features(test_examples, tokenizer, max_seq_length, labels, 'test')

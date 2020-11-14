@@ -158,7 +158,7 @@ def main():
     output_types, output_shapes = return_types_and_shapes(for_trainer=True)
 
     trainer = Trainer(
-        model_type, output_types, output_shapes, device='gpu', use_xla=use_xla, use_torch_mode=use_torch_mode
+        model_type, output_types, output_shapes, use_xla=use_xla, use_torch_mode=use_torch_mode
     )
 
     trainer.build_model(get_model_fn(model_type, config, len(labels), add_crf))

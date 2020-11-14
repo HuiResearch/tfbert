@@ -121,7 +121,7 @@ def main():
 
     # 初始化trainer
     trainer = Trainer(
-        model_type, output_types, output_shapes, device='gpu', use_xla=use_xla, use_torch_mode=use_torch_mode
+        model_type, output_types, output_shapes, use_xla=use_xla, use_torch_mode=use_torch_mode
     )
 
     # 构建模型
