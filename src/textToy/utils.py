@@ -33,8 +33,9 @@ def gpu_is_available():
 def get_devices():
     local_device_protos = device_lib.list_local_devices()
     gpus = [d.name for d in local_device_protos if d.device_type == 'GPU']
+    cpus = [d.name for d in local_device_protos if d.device_type == 'CPU']
     if not gpus:
-        return ['/device:CPU:0']
+        return cpus
     return gpus
 
 
