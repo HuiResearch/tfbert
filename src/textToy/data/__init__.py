@@ -4,6 +4,18 @@
 @file: __init__.py.py
 @date: 2020/09/08
 """
+import json
+import copy
+
+
+class BaseClass:
+    def dict(self):
+        output = copy.deepcopy(self.__dict__)
+        return output
+
+    def __str__(self):
+        return "{} \n {}".format(
+            self.__class__.__name__, json.dumps(self.dict(), ensure_ascii=False))
 
 
 def process_dataset(dataset, batch_size, num_features, set_type):

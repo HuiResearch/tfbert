@@ -8,7 +8,7 @@ from functools import partial
 from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 import tensorflow.compat.v1 as tf
-from . import process_dataset
+from . import process_dataset, BaseClass
 
 
 def return_types_and_shapes(for_trainer, is_multi_label=False):
@@ -33,7 +33,7 @@ def return_types_and_shapes(for_trainer, is_multi_label=False):
     return output_types, output_shapes
 
 
-class InputExample:
+class InputExample(BaseClass):
     def __init__(self, guid, text_a, text_b=None, label=None):
         self.guid = guid
         self.text_a = text_a
@@ -41,7 +41,7 @@ class InputExample:
         self.label = label
 
 
-class InputFeature(object):
+class InputFeature(BaseClass):
     """A single set of features of data."""
 
     def __init__(self,

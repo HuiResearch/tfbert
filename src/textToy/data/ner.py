@@ -8,7 +8,7 @@ from functools import partial
 from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 import tensorflow.compat.v1 as tf
-from . import process_dataset
+from . import process_dataset, BaseClass
 from typing import List
 
 
@@ -32,14 +32,14 @@ def return_types_and_shapes(for_trainer):
     return output_types, output_shapes
 
 
-class InputExample:
+class InputExample(BaseClass):
     def __init__(self, guid, words: List[str], tags: List[str] = None):
         self.guid = guid
         self.words = words
         self.tags = tags
 
 
-class InputFeature(object):
+class InputFeature(BaseClass):
     """A single set of features of data."""
 
     def __init__(self,
