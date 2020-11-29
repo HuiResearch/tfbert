@@ -16,8 +16,5 @@ setup(
     url="https://github.com/huanghuidmml/textToy",
     package_dir={"": "src"},
     packages=find_packages("src"),
-    install_requires=[
-        "tensorflow == 1.14",
-    ],
     python_requires=">=3.6.0"
 )
