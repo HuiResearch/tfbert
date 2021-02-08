@@ -1,7 +1,7 @@
 # tfbert
 - 基于tensorflow 1.x 的bert系列预训练模型工具
 - 支持多GPU训练，支持梯度累积，支持pb模型导出，自动剔除adam参数
-- 采用dataset 和 string handle配合，可以灵活训练预测
+- 采用dataset 和 string handle配合，可以灵活训练、验证、测试，在训练阶段也可以使用验证集测试模型，并根据验证结果保存参数。
 
 ## 背景
 
