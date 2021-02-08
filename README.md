@@ -84,6 +84,17 @@ input_shapes = {"input_ids": tf.TensorShape([None, None]),
                  "input_mask": tf.TensorShape([None, None]),
                  "token_type_ids": tf.TensorShape([None, None]),
                  'label_ids': tf.TensorShape([None])}
+optimizer = create_optimizer(
+        learning_rate,
+        num_train_steps=num_train_steps,
+        num_warmup_steps=num_warmup_steps,
+        optimizer_type='adamw',
+        epsilon=1e-6,
+        momentum=0.,
+        weight_decay=0.01,
+        decay_method='poly',
+        mixed_precision=mixed_precision
+)
 
 # 
 trainer = Trainer(
