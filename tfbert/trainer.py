@@ -209,7 +209,9 @@ class Trainer:
         self.mode_keys[mode] = handle
         self.iterator[mode] = iterator
 
-    def build_model(self, model_fn):
+    def build_model(
+            self, model_fn, only_test=False,
+            use_fgm=False, layer_name='word_embeddings'):
         """
         传入model_fn，也就是 model 构造函数，model_fn只能接收inputs和is_training
 
@@ -233,6 +235,9 @@ class Trainer:
         trainer.build_model(get_model_fn(model_type, config, num_classes=len(labels)))
 
         :param model_fn:
+        :param only_test: 是否只测试，True的话梯度这些就不计算了
+        :param use_fgm:  是否使用fgm对抗训练
+        :param layer_name:
         :return:
         """
 
@@ -245,11 +250,10 @@ class Trainer:
 
         tower_losses, tower_grads_and_vars = [], []
         outputs = {}
-
         for i, device in enumerate(self.devices):
             reuse = True if i > 0 else None
             with tf.device(device), \
-                 tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
+                    tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
                 # 这种做法还是不能判断，tensorflow里边需要tf.cond创建if
                 # is_training = (self.mode == self.mode_keys['train'])
 
@@ -257,17 +261,19 @@ class Trainer:
                 model_output = model_fn(self.get_inputs(device), True)
 
                 if 'loss' in model_output:
-                    all_vars = tf.trainable_variables()
-                    if self.optimizer is not None:
-                        grads_and_vars = self.optimizer.compute_gradients(
-                            model_output['loss'], all_vars)
-                    else:
-                        grads = tf.gradients(model_output['loss'], all_vars)
-                        grads_and_vars = list(zip(grads, all_vars))
-                    tower_grads_and_vars.append(grads_and_vars)
+                    if not only_test:
+                        grads_and_vars = utils.compute_gradients(
+                            model_output['loss'], self.optimizer)
 
+                        # 对抗训练
+                        if use_fgm:
+                            grads_and_vars = utils.fgm(
+                                loss=model_output['loss'], grads_and_vars=grads_and_vars,
+                                optimizer=self.optimizer, layer_name=layer_name
+                            )
+
+                        tower_grads_and_vars.append(grads_and_vars)
                     tower_losses.append(model_output['loss'])
-
                 if 'outputs' in model_output:
                     for k, v in model_output['outputs'].items():
                         if k not in outputs:
@@ -276,21 +282,15 @@ class Trainer:
 
         loss = None
         grads_and_vars = None
-        if self.num_devices > 1:
-            if len(tower_losses) > 0:
-                loss = tf.add_n(tower_losses) / len(tower_losses)
-                grads_and_vars = utils.average_grads_and_vars(tower_grads_and_vars)
+        if len(tower_losses) > 0:
+            loss = (tf.add_n(tower_losses) / len(tower_losses)) if self.num_devices > 1 else tower_losses[0]
+            if tower_grads_and_vars:
+                grads_and_vars = utils.average_grads_and_vars(tower_grads_and_vars) if self.num_devices > 1 else \
+                    tower_grads_and_vars[0]
 
-            if len(outputs) > 0:
-                for k, v in outputs.items():
-                    outputs[k] = tf.concat(v, 0)
-        else:
-            if len(tower_losses) > 0:
-                loss = tower_losses[0]
-                grads_and_vars = tower_grads_and_vars[0]
-            if len(outputs) > 0:
-                for k, v in outputs.items():
-                    outputs[k] = v[0]
+        if len(outputs) > 0:
+            for k, v in outputs.items():
+                outputs[k] = tf.concat(v, 0) if self.num_devices > 1 else v[0]
 
         self.train_outputs['loss'] = loss  # 训练只返回loss，若是有需求，可自行更改
 

@@ -6,6 +6,7 @@
 """
 import tensorflow.compat.v1 as tf
 from tensorflow.python.ops import array_ops
+from ..utils import search_layer
 
 
 def cross_entropy_loss(logits, targets, depth):
@@ -14,6 +15,25 @@ def cross_entropy_loss(logits, targets, depth):
     per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
     loss = tf.reduce_mean(per_example_loss)
     return loss
+
+
+def loss_with_gradient_penalty(
+        loss, epsilon=1,
+        layer_name='word_embeddings',
+        gradients_fn=None):
+    '''
+    参考苏神的带梯度惩罚的损失
+    :param loss: 原本计算得到的loss
+    :param epsilon:
+    :param layer_name:
+    :param gradients_fn: 梯度计算方法，tf.gradients或者optimizer.compute_gradients
+    :return:
+    '''
+    if gradients_fn is None:
+        gradients_fn = tf.gradients
+    embeddings = search_layer(layer_name)
+    gp = tf.reduce_sum(gradients_fn(loss, [embeddings])[0] ** 2)
+    return loss + 0.5 * epsilon * gp
 
 
 def mlm_loss(logits, targets, depth, label_weights):
