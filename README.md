@@ -154,6 +154,7 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 最好xla和混合精度（混合精度前提是你的卡支持fp16）都打开。
 ## **更新记录**
 
+- 对抗训练暂不可用...代码实现错误
 - 2021年2月22日 增加FGM对抗训练方式，可以在trainer.build_model()时设置use_fgm为True，
   即可开启fgm对抗训练，目前未测试效果。
 
