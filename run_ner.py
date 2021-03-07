@@ -47,9 +47,9 @@ def create_args():
     parser.add_argument("--batch_size", default=16, type=int, help="训练批次")
     parser.add_argument("--gradient_accumulation_steps", default=1, type=int, help="梯度累积")
     parser.add_argument("--learning_rate", default=2e-5, type=float, help="学习率")
-    parser.add_argument("--warmup_proportion", default=0.1, type=int,
+    parser.add_argument("--warmup_proportion", default=0.1, type=float,
                         help="Proportion of training to perform linear learning rate warmup for.")
-    parser.add_argument("--weight_decay", default=0.01, type=int, help="Weight decay if we apply some.")
+    parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay if we apply some.")
     parser.add_argument("--add_crf", action="store_true", help="是否增加crf层.")
 
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
