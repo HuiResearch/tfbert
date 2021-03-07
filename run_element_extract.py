@@ -46,10 +46,10 @@ def create_args():
     parser.add_argument("--batch_size", default=32, type=int, help="训练批次")
     parser.add_argument("--gradient_accumulation_steps", default=1, type=int, help="梯度累积")
     parser.add_argument("--learning_rate", default=2e-5, type=float, help="学习率")
-    parser.add_argument("--warmup_proportion", default=0.1, type=int,
+    parser.add_argument("--warmup_proportion", default=0.1, type=float,
                         help="Proportion of training to perform linear learning rate warmup for.")
-    parser.add_argument("--weight_decay", default=0.01, type=int, help="Weight decay if we apply some.")
-    parser.add_argument("--threshold", default=0.5, type=int, help="多标签分类判定阈值，每个标签都用这个，有需要可以定义为列表.")
+    parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay if we apply some.")
+    parser.add_argument("--threshold", default=0.5, type=float, help="多标签分类判定阈值，每个标签都用这个，有需要可以定义为列表.")
 
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
     parser.add_argument("--do_eval", action="store_true", help="Whether to run eval on the dev set.")
