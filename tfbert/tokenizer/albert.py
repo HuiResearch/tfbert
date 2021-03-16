@@ -71,6 +71,9 @@ class ALBertTokenizer(PTMTokenizer):
     def vocab_size(self):
         return len(self.vocab)
 
+    def __len__(self):
+        return self.vocab_size
+
     def convert_token_to_id(self, token):
         if self.sp_model:
             return self.sp_model.PieceToId(
