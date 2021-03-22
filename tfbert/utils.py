@@ -363,7 +363,6 @@ def clean_bert_model(
                 temp_tensor[:min_size] = tensor[:min_size]
                 tensor = temp_tensor
         var_values[name] = tensor
-        var_values[name] = tensor
 
     with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
         tf_vars = [
