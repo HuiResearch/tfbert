@@ -169,7 +169,6 @@ class Trainer:
 
     def from_pretrained(self, model_dir_or_file):
         """
-        加载参数需要在compile之后
         :param model_dir_or_file:
         :return:
         """

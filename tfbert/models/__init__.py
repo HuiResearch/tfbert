@@ -20,5 +20,5 @@ MODELS = {
 
 from .for_task import (
     SequenceClassification, TokenClassification,
-    MultiLabelClassification, MLM)
+    MultiLabelClassification, MaskedLM, PretrainingLM)
 

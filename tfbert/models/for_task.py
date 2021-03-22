@@ -149,7 +149,7 @@ class MultiLabelClassification:
                 self.loss = tf.reduce_mean(per_example_loss)
 
 
-class MLM:
+class MaskedLM:
     def __init__(
             self,
             model_type,
@@ -158,9 +158,9 @@ class MLM:
             input_ids,
             input_mask=None,
             token_type_ids=None,
-            mlm_ids=None,
-            mlm_weights=None,
-            mlm_positions=None,
+            masked_lm_ids=None,
+            masked_lm_weights=None,
+            masked_lm_positions=None,
             compute_type=tf.float32
     ):
         model_type = model_type.lower()
@@ -178,13 +178,53 @@ class MLM:
         )
         sequence_output = model.get_sequence_output()
         embedding_table = model.get_embedding_table()
-        logits = layers.mlm_layer(
-            config, sequence_output, embedding_table, scope="cls/predictions"
-        )
-        if mlm_positions is not None:
-            self.logits = model_utils.gather_indexes(logits, mlm_positions)
-        else:
-            self.logits = logits
 
-        if all([el is not None for el in [mlm_ids, mlm_weights, mlm_positions]]):
-            self.loss = loss.mlm_loss(self.logits, mlm_ids, config.vocab_size, mlm_weights)
+        self.prediction_scores = layers.mlm_layer(
+            config, sequence_output, embedding_table, masked_lm_positions, scope="cls/predictions"
+        )
+
+        if all([el is not None for el in [masked_lm_ids, masked_lm_weights, masked_lm_positions]]):
+            self.loss = loss.mlm_loss(self.prediction_scores, masked_lm_ids, config.vocab_size, masked_lm_weights)
+
+
+class PretrainingLM:
+    def __init__(
+            self,
+            model_type,
+            config,
+            is_training,
+            input_ids,
+            input_mask=None,
+            token_type_ids=None,
+            masked_lm_ids=None,
+            masked_lm_weights=None,
+            masked_lm_positions=None,
+            next_sentence_labels=None,
+            compute_type=tf.float32
+    ):
+        model_type = model_type.lower()
+        if model_type not in MODELS:
+            raise ValueError("Unsupported model option: {}, "
+                             "you can choose one of {}".format(model_type, "、".join(MODELS.keys())))
+
+        model = MODELS[model_type](
+            config,
+            is_training=is_training,
+            input_ids=input_ids,
+            input_mask=input_mask,
+            token_type_ids=token_type_ids,
+            compute_type=compute_type
+        )
+        sequence_output = model.get_sequence_output()
+        pooled_output = model.get_pooled_output()
+        embedding_table = model.get_embedding_table()
+        self.prediction_scores = layers.mlm_layer(
+            config, sequence_output, embedding_table, masked_lm_positions, scope="cls/predictions"
+        )
+        self.seq_relationship_score = layers.seq_rel_weight(config, pooled_output, scope='cls/seq_relationship')
+
+        if all([el is not None for el in
+                [masked_lm_ids, masked_lm_weights, masked_lm_positions]]) and next_sentence_labels is not None:
+            masked_lm_loss = loss.mlm_loss(self.prediction_scores, masked_lm_ids, config.vocab_size, masked_lm_weights)
+            next_sentence_loss = loss.cross_entropy_loss(self.seq_relationship_score, next_sentence_labels, 2)
+            self.loss = masked_lm_loss + next_sentence_loss

@@ -403,7 +403,8 @@ def attention_pooling_layer(
     return output, attention_score
 
 
-def mlm_layer(config, sequence_output, embedding_table, scope='cls/predictions'):
+def mlm_layer(config, sequence_output, embedding_table, mlm_positions, scope='cls/predictions'):
+    sequence_output = model_utils.gather_indexes(sequence_output, mlm_positions)
     with tf.variable_scope(scope):
         # We apply one more non-linear transformation before the output layer.
         # This matrix is not used after pre-training.

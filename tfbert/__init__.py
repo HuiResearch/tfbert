@@ -13,7 +13,7 @@ from .models import (
     BertModel, ALBertModel, ElectraModel,
     NezhaModel, WoBertModel,
     SequenceClassification, MODELS, crf,
-    TokenClassification, MultiLabelClassification, MLM)
+    TokenClassification, MultiLabelClassification, MaskedLM, PretrainingLM)
 from .config import (
     BaseConfig, BertConfig, ALBertConfig,
     ElectraConfig, NeZhaConfig, WoBertConfig, CONFIGS)
@@ -31,4 +31,3 @@ from .optimization import (
     AdamWeightDecayOptimizer, LAMBOptimizer,
     lr_schedule, create_optimizer, create_train_op)
 from .trainer import Trainer
-
