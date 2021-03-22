@@ -307,14 +307,30 @@ def init_checkpoints(init_checkpoint, print_vars=True, prefix=''):
             tf.logging.info("  **** ALL Variables RESTORED ****")
 
 
+def get_truncated_normal_values(shape, initializer_range=0.02):
+    sess_conf = tf.ConfigProto()
+    sess_conf.gpu_options.allow_growth = True
+    sess_conf.allow_soft_placement = True
+    with tf.Session(config=sess_conf) as sess:
+        a = tf.truncated_normal(shape=shape, stddev=initializer_range)
+        vectors = sess.run(a)
+    return vectors
+
+
 def clean_bert_model(
         model_file, save_file,
-        waste_name_: List[str] = None):
+        waste_name_: List[str] = None,
+        num_new_tokens=None,
+        word_embedding_name='word_embeddings',
+        output_bias_name='cls/predictions/output_bias'):
     '''
     将已保存的bert系列模型的优化器参数去掉
     :param model_file:  原始ckpt文件
     :param save_file: 处理后模型保存文件
     :param waste_name_: 自定义去除参数名
+    :param num_new_tokens:  如果不为 None，则对权重的word embedding部分进行resize，这样可以自定义词典大小
+    :param word_embedding_name:
+    :param output_bias_name:
     :return:
     '''
     tf.reset_default_graph()
@@ -335,6 +351,18 @@ def clean_bert_model(
     for name in var_values:
         tensor = reader.get_tensor(name)
         var_dtypes[name] = tensor.dtype
+        if num_new_tokens is not None and num_new_tokens != tensor.shape[0]:
+            if word_embedding_name in name:
+                temp_tensor = get_truncated_normal_values(shape=[num_new_tokens, tensor.shape[1]])
+                min_size = min(num_new_tokens, tensor.shape[0])
+                temp_tensor[:min_size, :] = tensor[:min_size, :]
+                tensor = temp_tensor
+            elif output_bias_name in name:
+                temp_tensor = np.zeros([num_new_tokens, ], dtype=tensor.dtype)
+                min_size = min(num_new_tokens, tensor.shape[0])
+                temp_tensor[:min_size] = tensor[:min_size]
+                tensor = temp_tensor
+        var_values[name] = tensor
         var_values[name] = tensor
 
     with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
@@ -355,3 +383,25 @@ def clean_bert_model(
 
         # Use the built saver to save the averaged checkpoint.
         saver.save(sess, save_file)
+
+
+def resize_word_embeddings(
+        model_file, save_file,
+        num_new_tokens,
+        word_embedding_name='word_embeddings',
+        output_bias_name='cls/predictions/output_bias'):
+    """
+    对保存模型的embedding权重修改
+    :param model_file: 原始模型文件
+    :param save_file: 修改后保存的文件
+    :param num_new_tokens: 新的词表大小
+    :param word_embedding_name:
+    :param output_bias_name:
+    :return:
+    """
+    clean_bert_model(
+        model_file, save_file,
+        num_new_tokens=num_new_tokens,
+        word_embedding_name=word_embedding_name,
+        output_bias_name=output_bias_name
+    )

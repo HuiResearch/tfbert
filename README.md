@@ -153,7 +153,8 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 开启混合精度比较慢，base版本模型的话需要一两分钟，但是开启后越到后边越快，训练步数少的话可以只开启xla就行了，如果多的话
 最好xla和混合精度（混合精度前提是你的卡支持fp16）都打开。
 ## **更新记录**
-
+- 增加resize_word_embeddings方法，可对已保存权重文件的embedding部分就行词表大小修改。
+  具体见[resize_word_embeddings方法](tfbert/utils.py)
 - 对抗训练暂不可用...代码实现错误
 - 2021年2月22日 增加FGM对抗训练方式，可以在trainer.build_model()时设置use_fgm为True，
   即可开启fgm对抗训练，目前未测试效果。
