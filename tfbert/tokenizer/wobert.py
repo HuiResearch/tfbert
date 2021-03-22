@@ -6,12 +6,12 @@
 """
 from .base import convert_to_unicode
 from .bert import BertTokenizer
-import jieba
 
 
 class WoBertTokenizer(BertTokenizer):
     def __init__(self, seg_fn=None, **kwargs):
         super(WoBertTokenizer, self).__init__(**kwargs)
+        import jieba
         if seg_fn is None:
             self.seg_fn = lambda x: jieba.cut(x, HMM=False)
         else:
