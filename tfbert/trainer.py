@@ -210,7 +210,7 @@ class Trainer:
 
     def build_model(
             self, model_fn, only_test=False,
-            use_fgm=False, layer_name='word_embeddings'):
+            layer_name='word_embeddings'):
         """
         传入model_fn，也就是 model 构造函数，model_fn只能接收inputs和is_training
 
@@ -265,11 +265,11 @@ class Trainer:
                             model_output['loss'], self.optimizer)
 
                         # 对抗训练
-                        if use_fgm:
-                            grads_and_vars = utils.fgm(
-                                loss=model_output['loss'], grads_and_vars=grads_and_vars,
-                                optimizer=self.optimizer, layer_name=layer_name
-                            )
+                        # if use_fgm:
+                        #     grads_and_vars = utils.fgm(
+                        #         loss=model_output['loss'], grads_and_vars=grads_and_vars,
+                        #         optimizer=self.optimizer, layer_name=layer_name
+                        #     )
 
                         tower_grads_and_vars.append(grads_and_vars)
                     tower_losses.append(model_output['loss'])
