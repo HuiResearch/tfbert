@@ -46,7 +46,6 @@ def create_position_embeddings(
         initializer_range=0.02,
         max_position_embeddings=512
 ):
-
     full_position_embeddings = model_utils.create_weight(
         shape=[max_position_embeddings, embedding_size],
         var_name=position_embedding_name,

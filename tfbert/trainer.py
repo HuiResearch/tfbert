@@ -115,6 +115,7 @@ class Trainer:
         self.global_step = 0  # 全局步数
         self._last_step = 0  # 上一次优化的全局步数
         self.global_step_changed = False  # 标识优化步数是否变换，避免梯度累积时重复验证的情况
+        self.fgm_restore_op = None
 
     def is_gpu_available(self):
         with self.session:
@@ -210,6 +211,7 @@ class Trainer:
 
     def build_model(
             self, model_fn, only_test=False,
+            use_fgm=False,
             layer_name='word_embeddings'):
         """
         传入model_fn，也就是 model 构造函数，model_fn只能接收inputs和is_training
@@ -257,7 +259,8 @@ class Trainer:
                 # is_training = (self.mode == self.mode_keys['train'])
 
                 # 直接默认都是训练模式，然后使用tf.keras.backend.learning_phase()控制dropout等layer
-                model_output = model_fn(self.get_inputs(device), True)
+                inputs = self.get_inputs(device)
+                model_output = model_fn(inputs, True)
 
                 if 'loss' in model_output:
                     if not only_test:
@@ -265,11 +268,11 @@ class Trainer:
                             model_output['loss'], self.optimizer)
 
                         # 对抗训练
-                        # if use_fgm:
-                        #     grads_and_vars = utils.fgm(
-                        #         loss=model_output['loss'], grads_and_vars=grads_and_vars,
-                        #         optimizer=self.optimizer, layer_name=layer_name
-                        #     )
+                        if use_fgm:
+                            grads_and_vars = utils.fgm(
+                                model_fn, inputs, model_output['loss'], grads_and_vars=grads_and_vars,
+                                optimizer=self.optimizer, layer_name=layer_name
+                            )
 
                         tower_grads_and_vars.append(grads_and_vars)
                     tower_losses.append(model_output['loss'])

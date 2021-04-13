@@ -37,9 +37,9 @@ def create_args():
     parser.add_argument('--export_dir', default='output/pb', type=str, help="")
 
     parser.add_argument('--labels', default='体育,娱乐,家居,房产,教育', type=str, help="文本分类标签")
-    parser.add_argument('--train_file', default='data/classification/train.csv', type=str, help="")
-    parser.add_argument('--dev_file', default='data/classification/dev.csv', type=str, help="")
-    parser.add_argument('--test_file', default='data/classification/test.csv', type=str, help="")
+    parser.add_argument('--train_file', default='classification/train.csv', type=str, help="")
+    parser.add_argument('--dev_file', default='classification/dev.csv', type=str, help="")
+    parser.add_argument('--test_file', default='classification/test.csv', type=str, help="")
 
     parser.add_argument("--num_train_epochs", default=3, type=int, help="训练轮次")
     parser.add_argument("--max_vocab_size", default=5000, type=int, help="词表最大数量")

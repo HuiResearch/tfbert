@@ -50,7 +50,7 @@ def multiple_convert_examples_to_features(
 def process_dataset(dataset, batch_size, num_features, set_type):
     if set_type == 'train':
         dataset = dataset.repeat()
-        dataset = dataset.shuffle(buffer_size=num_features)
+        dataset = dataset.shuffle(buffer_size=100)
     dataset = dataset.batch(batch_size=batch_size,
                             drop_remainder=bool(set_type == 'train'))
     dataset.prefetch(tf.data.experimental.AUTOTUNE)

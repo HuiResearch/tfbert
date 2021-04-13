@@ -172,7 +172,7 @@ def compute_gradients(loss, optimizer):
     return grads_and_vars
 
 
-def fgm(loss, grads_and_vars=None, optimizer=None, layer_name='word_embeddings', epsilon=1.):
+def fgm(model_fn, inputs, loss, grads_and_vars, optimizer=None, layer_name='word_embeddings', epsilon=1.):
     """
     FGM对抗训练tensorflow1.x实现
     :param loss: 原有模型损失
@@ -182,8 +182,7 @@ def fgm(loss, grads_and_vars=None, optimizer=None, layer_name='word_embeddings',
     :param epsilon: 扰动参数
     :return:
     """
-    if grads_and_vars is None:
-        grads_and_vars = compute_gradients(loss, optimizer)
+
     embeddings = search_layer(layer_name)  # 找到embedding变量
 
     # 计算loss对embedding的梯度
@@ -193,25 +192,27 @@ def fgm(loss, grads_and_vars=None, optimizer=None, layer_name='word_embeddings',
         embedding_gradients, _ = list(zip(*embedding_gradients_and_vars))
     else:
         embedding_gradients = tf.gradients(loss, [embeddings])[0]
-
     embedding_gradients = tf.zeros_like(embeddings) + embedding_gradients
 
     # 计算扰动值
-    delta = epsilon * embedding_gradients / (
-            tf.sqrt(tf.reduce_sum(tf.square(embedding_gradients))) + 1e-8)
+    delta = tf.stop_gradient(
+        epsilon * embedding_gradients / (
+                tf.sqrt(tf.reduce_sum(tf.square(embedding_gradients))) + 1e-8))
     # embedding添加扰动
-    embeddings.assign_add(delta)
+    add_op = embeddings.assign_add(delta)
     # 重新计算扰动后的梯度
-    adv_grads_and_vars = compute_gradients(
-        loss, optimizer)
+    with tf.variable_scope(tf.get_variable_scope(), reuse=True), tf.control_dependencies([add_op]):
+        loss_adv = model_fn(inputs, True)['loss']
+        adv_grads_and_vars = compute_gradients(
+            loss_adv, optimizer)
 
+    restore_op = embeddings.assign_sub(delta)
     # 将扰动后得到的梯度累加到原有梯度中
-    grads_and_vars = [(gradients_assign_add(grads_and_vars[i][0], adv_grads_and_vars[i][0]),
-                       grads_and_vars[i][1]) for i in range(len(grads_and_vars))]
+    with tf.control_dependencies([restore_op]):
+        final_grads_and_vars = [(gradients_assign_add(grads_and_vars[i][0], adv_grads_and_vars[i][0]),
+                                 grads_and_vars[i][1]) for i in range(len(grads_and_vars))]
 
-    # 删除embedding中的扰动
-    embeddings.assign_sub(delta)
-    return grads_and_vars
+    return final_grads_and_vars
 
 
 def average_grads_and_vars(tower_grads_and_vars):
