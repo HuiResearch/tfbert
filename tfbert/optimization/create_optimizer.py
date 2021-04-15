@@ -20,10 +20,9 @@ def create_optimizer(
         mixed_precision=False,
         init_loss_scale=2 ** 32
 ):
-    num_train_steps = int(num_train_steps)
-    num_warmup_steps = int(num_warmup_steps)
-
-    if decay_method is not None:
+    if decay_method is not None and num_train_steps is not None and num_warmup_steps is not None:
+        num_train_steps = int(num_train_steps)
+        num_warmup_steps = int(num_warmup_steps)
         learning_rate = lr_schedule(
             learning_rate, num_train_steps, num_warmup_steps,
             decay_method=decay_method, optimizer_type=optimizer_type
