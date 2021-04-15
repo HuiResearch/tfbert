@@ -37,7 +37,7 @@ def dropout(input_tensor, dropout_prob):
     if dropout_prob is None or dropout_prob == 0.0:
         return input_tensor
 
-    output = tf.layers.dropout(input_tensor, rate=dropout_prob)
+    output = tf.layers.dropout(input_tensor, dropout_prob, training=None)
     return output
 
 
