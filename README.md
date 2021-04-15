@@ -153,6 +153,8 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 开启混合精度比较慢，base版本模型的话需要一两分钟，但是开启后越到后边越快，训练步数少的话可以只开启xla就行了，如果多的话
 最好xla和混合精度（混合精度前提是你的卡支持fp16）都打开。
 ## **更新记录**
+- tf.layers.dropout 需要将training设置为None才会根据tf.keras.backend.learning_phase()进行mode判定。
+  之前默认的training为False，dropout都没起作用，非常抱歉。
 - 增加resize_word_embeddings方法，可对已保存权重文件的embedding部分就行词表大小修改。
   具体见[resize_word_embeddings方法](tfbert/utils.py)
 - 对抗训练暂不可用...代码实现错误
