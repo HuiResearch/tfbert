@@ -226,6 +226,20 @@ class PTMTokenizer(object):
         input_ids = self.convert_tokens_to_ids(tokens)
         return input_ids
 
+    def __call__(self,
+                 text,
+                 text_pair=None,
+                 add_special_tokens=True,
+                 max_length=None,
+                 pad_to_max_length=False):
+        return self.encode(
+            text,
+            text_pair,
+            add_special_tokens,
+            max_length,
+            pad_to_max_length
+        )
+
     def encode(self,
                text,
                text_pair=None,

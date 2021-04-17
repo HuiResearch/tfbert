@@ -30,4 +30,4 @@ from .utils import (
 from .optimization import (
     AdamWeightDecayOptimizer, LAMBOptimizer,
     lr_schedule, create_optimizer, create_train_op)
-from .trainer import Trainer
+from .trainer import Trainer, SimplerTrainer

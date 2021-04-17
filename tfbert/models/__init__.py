@@ -10,7 +10,9 @@ from .electra import ElectraModel
 from .nezha import NezhaModel
 from .model_utils import (
     dropout, layer_norm_and_dropout, layer_norm,
-    create_weight, get_shape_list, gather_indexes)
+    create_weight, get_shape_list, gather_indexes, create_initializer)
+
+from .embeddings import (create_word_embeddings, create_position_embeddings, create_token_type_embeddings)
 from . import crf
 
 
