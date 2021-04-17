@@ -9,6 +9,7 @@ import copy
 from multiprocessing import cpu_count, Pool
 from tqdm import tqdm
 import tensorflow.compat.v1 as tf
+from .generator import SimpleDataset, collate_batch, sequence_padding
 
 
 class BaseClass:

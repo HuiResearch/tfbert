@@ -4,7 +4,7 @@
 # @Author    :huanghui
 import numpy as np
 
-from tfbert.data.generator import SimpleDataset
+from tfbert.data import SimpleDataset
 from tfbert.models import create_word_embeddings, dropout, create_initializer
 from tfbert.models.loss import cross_entropy_loss
 from tfbert.models.layers import conv2d_layer, max_pooling_layer
@@ -128,7 +128,7 @@ trainer = SimplerTrainer(
 trainer.build_model(model_fn=get_model_fn(True, len(vocab2id)))
 trainer.compile()
 trainer.init_variables()
-
+best_score = 0
 for epoch in trange(5):
     epoch_iter = bar_fn(train_dataset)
     for d in epoch_iter:
@@ -138,5 +138,8 @@ for epoch in trange(5):
     outputs = trainer.predict(dev_dataset.get_all_features(), output_names=['logits', 'label_ids'])
     y_true, y_pred = outputs['label_ids'], np.argmax(outputs['logits'], axis=-1)
     score = accuracy_score(y_true, y_pred)
+    if score > best_score:
+        best_score = score
+        trainer.save_pretrained('output')
     print()
     print(score)
