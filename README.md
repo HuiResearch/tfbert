@@ -48,88 +48,7 @@ inputs = tokenizer.encode(
 
 config.save_pretrained("save_path")
 tokenizer.save_pretrained("save_path")
-```
-#### **Trainer**
-```python
-import tensorflow.compat.v1 as tf
-from tfbert import Trainer, create_optimizer
 
-# 创建dataset
-def create_dataset(set_type):
-    ...
-
-def get_model_fn():
-    # model fn输入为inputs 和 is_training
-    # 输出为字典，训练传入loss，需要验证预测传入outputs（字典） 
-    def model_fn(inputs, is_training):
-        model = ...
-        loss = model.loss
-        outputs = {'logits': model.logits}
-        return {'loss': loss, 'outputs': outputs}
-
-    return model_fn
-
-
-train_dataset, num_train_batch = create_dataset('train')
-dev_dataset, num_dev_batch = create_dataset('dev')
-
-# 创建dataset输入的types和shapes
-# 下面是分类的types和shapes
-# 当然也可以直接从 from textToy.data.classification import return_types_and_shapes
-input_types = {"input_ids": tf.int32,
-                "input_mask": tf.int32,
-                "token_type_ids": tf.int32,
-                'label_ids': tf.int64}
-input_shapes = {"input_ids": tf.TensorShape([None, None]),
-                 "input_mask": tf.TensorShape([None, None]),
-                 "token_type_ids": tf.TensorShape([None, None]),
-                 'label_ids': tf.TensorShape([None])}
-optimizer = create_optimizer(
-        learning_rate,
-        num_train_steps=num_train_steps,
-        num_warmup_steps=num_warmup_steps,
-        optimizer_type='adamw',
-        epsilon=1e-6,
-        momentum=0.,
-        weight_decay=0.01,
-        decay_method='poly',
-        mixed_precision=mixed_precision
-)
-
-# 
-trainer = Trainer(
-        input_types=input_types,
-        input_shapes=input_shapes,
-        optimizer=optimizer,  # 因为使用混合精度训练需要使用rewrite过的优化器计算梯度，所以需要先传入，如果不使用就可以在compile传入
-        use_xla=use_xla,  # 是否开启xla加速
-        mixed_precision=mixed_precision,  # 是否在xla的前提下开启混合精度
-        single_device=single_device  # 是否只是用一个设备运行
-    )
-trainer.build_model(get_model_fn())
-
-# 配置优化节点train_op
-trainer.compile(
-    gradient_accumulation_steps=gradient_accumulation_steps,
-    max_grad=1.,
-)
-t_total = num_train_batch * epochs // gradient_accumulation_steps
-
-  
-# 将dataset传入trainer
-trainer.prepare_dataset(train_dataset, 'train')
-trainer.prepare_dataset(dev_dataset, 'dev')
-
-# 预训练模型加载参数，若不加载，可以调用trainer.init_variables()
-trainer.from_pretrained('model_dir')
-
-"""
-接下来可以:
-trainer.train_step()  调用优化器训练，返回loss
-trainer.eval_step()  会返回loss、model_fn定义的outputs
-trainer.test_step()  返回model_fn定义的outputs
-进行训练、验证、预测
-trainer.predict() 传入mode，和指定预测输出的结果，可以直接调用模型预测
-"""
 ```
 多卡运行方式，需要设置环境变量CUDA_VISIBLE_DEVICES，内置trainer会读取参数：
 ```
@@ -153,6 +72,12 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 开启混合精度比较慢，base版本模型的话需要一两分钟，但是开启后越到后边越快，训练步数少的话可以只开启xla就行了，如果多的话
 最好xla和混合精度（混合精度前提是你的卡支持fp16）都打开。
 ## **更新记录**
+- 2021/4/18 花了一天时间重整Trainer，新增一个Dataset类，具体更新：
+  1. trainer封装了train、evaluate、predict方法，具体见新版的使用例子。
+  2. 写了一个Dataset类，支持简单的数据包装，也可以直接导出tf的dataset类型，具体[dataset.py](tfbert/data/dataset.py). 
+  3. 去除了原版需要自定义shapes和types的方式（原有data代码还没删），都可以通过新增的Dataset类下的方法直接自行获取。
+  
+
 - 2021/4/17 新增SimpleTrainer，采用feed dict的方式进行调用，操作简单，但是相比Trainer的dataset方式要慢好多，
   随便写了个例子[simple_trainer.py](simple_trainer.py)，以后有时间再完善
 - tf.layers.dropout 需要将training设置为None才会根据tf.keras.backend.learning_phase()进行mode判定。

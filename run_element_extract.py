@@ -2,25 +2,16 @@
 # @FileName  :run_element_extract.py
 # @Time      :2021/2/5 10:27
 # @Author    :huanghui
-import platform
 import tensorflow.compat.v1 as tf
-from tfbert.data.classification import (
-    InputExample, convert_examples_to_features,
-    create_dataset_by_gen, return_types_and_shapes)
-from tfbert import (MultiLabelClassification,
-                    CONFIGS, TOKENIZERS,
-                    set_seed, ProgressBar,
-                    devices, Trainer, create_optimizer)
+from tfbert import (
+    Trainer, Dataset,
+    MultiLabelClassification,
+    CONFIGS, TOKENIZERS, devices, set_seed)
+from tfbert.data.classification import convert_examples_to_features, InputExample
 from tfbert.metric.multi_label import multi_label_metric
-from tqdm import tqdm
 import os
 import json
 import argparse
-
-if platform.system() == 'Windows':
-    bar_fn = ProgressBar  # win10下我使用tqdm老换行，所以自己写了一个
-else:
-    bar_fn = tqdm  # linux就用tqdm
 
 
 def create_args():
@@ -53,12 +44,12 @@ def create_args():
 
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
     parser.add_argument("--do_eval", action="store_true", help="Whether to run eval on the dev set.")
-    parser.add_argument("--do_test", action="store_true", help="Whether to run test on the test set.")
+    parser.add_argument("--do_predict", action="store_true", help="Whether to run predict on the test set.")
     parser.add_argument("--evaluate_during_training", action="store_true", help="是否边训练边验证")
     parser.add_argument("--do_export", action="store_true", help="将模型导出为pb格式.")
 
     parser.add_argument("--logging_steps", default=1000, type=int, help="训练时每隔几步验证一次")
-    parser.add_argument("--save_steps", default=1000, type=int, help="训练时每隔几步保存一次")
+    parser.add_argument("--saving_steps", default=1000, type=int, help="训练时每隔几步保存一次")
     parser.add_argument("--random_seed", default=42, type=int, help="随机种子")
     parser.add_argument("--threads", default=8, type=int, help="数据处理进程数")
     parser.add_argument("--max_checkpoints", default=1, type=int, help="模型保存最大数量，默认只保存一个")
@@ -96,7 +87,7 @@ def create_examples(filename):
     return examples
 
 
-def load_dataset(set_type, tokenizer, args):
+def create_dataset(set_type, tokenizer, args):
     filename_map = {
         'train': args.train_file, 'dev': args.dev_file, 'test': args.test_file
     }
@@ -106,9 +97,14 @@ def load_dataset(set_type, tokenizer, args):
                                             max_length=args.max_seq_length, set_type=set_type,
                                             label_list=args.labels, is_multi_label=True,
                                             threads=args.threads)
-    dataset, steps_one_epoch = create_dataset_by_gen(
-        features, args.batch_size, set_type, is_multi_label=True)
-    return dataset, steps_one_epoch
+    dataset = Dataset(features,
+                      is_training=bool(set_type == 'train'),
+                      batch_size=args.batch_size,
+                      drop_last=bool(set_type == 'train'),
+                      buffer_size=len(features),
+                      max_length=args.max_seq_length)
+    dataset.format_as(['input_ids', 'input_mask', 'token_type_ids', 'label_ids'])
+    return dataset
 
 
 def convert_to_one_hot(probs, thresholds):
@@ -129,10 +125,11 @@ def get_model_fn(config, args):
             is_training=is_training,
             **inputs
         )
-        loss = model.loss / args.gradient_accumulation_steps
-        return {
-            'loss': loss,
-            'outputs': {'predictions': model.predictions, 'label_ids': inputs['label_ids']}}
+        outputs = {'outputs': {'predictions': model.predictions, 'label_ids': inputs['label_ids']}}
+        if model.loss is not None:
+            loss = model.loss / args.gradient_accumulation_steps
+            outputs['loss'] = loss
+        return outputs
 
     return model_fn
 
@@ -158,150 +155,105 @@ def get_serving_fn(config, args):
     return serving_fn
 
 
-def evaluate(args, trainer, set_type='dev', steps=None):
-    outputs = trainer.predict(set_type, ['predictions', 'label_ids'], steps)
-    one_hot = []
-    for prediction in outputs['predictions']:
-        one_hot.append(convert_to_one_hot(prediction, args.threshold))
-    result = multi_label_metric(outputs['label_ids'], one_hot, args.labels, dict_report=True)
-    return result
+def get_post_process_fn(threshold):
+    def post_process_fn(outputs):
+        """
+        这里接收trainer.predict返回的outputs
+        :param outputs:
+        :return:
+        """
+        process_outputs = {'one_hot': []}
+        for prediction in outputs['predictions']:
+            process_outputs['one_hot'].append(convert_to_one_hot(prediction, threshold))
+        process_outputs['label_ids'] = outputs['label_ids']
+        return process_outputs
+
+    return post_process_fn
 
 
-def train(config, tokenizer, args):
-    train_dataset, num_train_batch = load_dataset('train', tokenizer, args)
+def get_metric_fn(labels):
+    def metric_fn(outputs):
+        """
+        这里接收自定义post_process_fn返回的outputs，如果没有post_process_fn，则接收trainer.predict返回的outputs
+        :param outputs:
+        :return:
+        """
+        result = multi_label_metric(outputs['label_ids'], outputs['one_hot'], labels, dict_report=True)
+        eval_result = {
+            'avg-f1': result[1]['micro macro avg']['f1-score'],
+            'macro-f1': result[1]['macro avg']['f1-score'],
+            'micro-f1': result[1]['macro avg']['f1-score'],
+            'report': result[0]}
+        return eval_result
 
-    if args.evaluate_during_training:
-        dev_dataset, num_dev_batch = load_dataset('dev', tokenizer, args)
-    else:
-        dev_dataset, num_dev_batch = None, None
-
-    t_total = num_train_batch * args.num_train_epochs // args.gradient_accumulation_steps
-
-    optimizer = create_optimizer(
-        args.learning_rate,
-        num_train_steps=t_total,
-        num_warmup_steps=t_total * args.warmup_proportion,
-        optimizer_type=args.optimizer_type,
-        mixed_precision=args.mixed_precision
-    )
-    input_types, input_shapes = return_types_and_shapes(
-        for_trainer=True, is_multi_label=True)
-    # 初始化trainer
-    trainer = Trainer(
-        input_types=input_types,
-        input_shapes=input_shapes,
-        optimizer=optimizer,  # 因为使用混合精度训练需要使用rewrite过的优化器计算梯度，所以需要先传入，如果不使用就可以在compile传入
-        use_xla=args.use_xla,
-        mixed_precision=args.mixed_precision,
-        single_device=args.single_device
-    )
-
-    # 构建模型
-    trainer.build_model(get_model_fn(config, args))
-    # 配置trainer训练节点train op
-    trainer.compile(
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        max_grad=1.,
-    )
-
-    trainer.prepare_dataset(train_dataset, 'train')
-    if dev_dataset is not None:
-        trainer.prepare_dataset(dev_dataset, 'dev')
-
-    # 预训练模型加载预训练参数，若不加载，调用trainer.init_variables()
-    trainer.from_pretrained(
-        args.model_dir if args.pretrained_checkpoint_path is None else args.pretrained_checkpoint_path)
-
-    tf.logging.info("***** Running training *****")
-    tf.logging.info("  Num epochs = {}".format(args.num_train_epochs))
-    tf.logging.info("  batch size = {}".format(args.batch_size))
-    tf.logging.info("  Gradient Accumulation steps = {}".format(args.gradient_accumulation_steps))
-    tf.logging.info("  Total train batch size (accumulation) = {}".format(
-        args.batch_size * args.gradient_accumulation_steps))
-    tf.logging.info("  optimizer steps = %d", t_total)
-    tf.logging.info("  Num devices = {}".format(trainer.num_devices))
-    tf.logging.info("  Num params = {}".format(trainer.num_params))
-    best_score = 0.
-    for epoch in range(args.num_train_epochs):
-        epoch_iter = bar_fn(range(num_train_batch), desc='epoch {} '.format(epoch + 1))
-        for step in epoch_iter:
-            train_loss = trainer.train_step()
-            epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
-            if args.evaluate_during_training and trainer.global_step_changed and (
-                    trainer.global_step % args.logging_steps == 0 or trainer.global_step == t_total):
-                result = evaluate(
-                    args, trainer, 'dev', num_dev_batch
-                )
-                score = result[1]['micro macro avg']['f1-score']
-                if score > best_score:
-                    best_score = score
-                    trainer.save_pretrained(args.output_dir)
-                    config.save_pretrained(args.output_dir)
-                    tokenizer.save_pretrained(args.output_dir)
-                tf.logging.info("***** eval results *****")
-                tf.logging.info(" global step : {}".format(trainer.global_step))
-                tf.logging.info(" eval score : {:.4f}".format(score))
-                tf.logging.info(" best score : {:.4f}".format(best_score))
-            if not args.evaluate_during_training and trainer.global_step_changed and (
-                    trainer.global_step % args.save_steps == 0 or trainer.global_step == t_total):
-                trainer.save_pretrained(args.output_dir)
-                config.save_pretrained(args.output_dir)
-                tokenizer.save_pretrained(args.output_dir)
-        epoch_iter.close()
-
-    tf.logging.info("***** Finished training *****")
-    return trainer
+    return metric_fn
 
 
 def main():
     args = create_args()
     set_seed(args.random_seed)
 
-    trainer = None
-    config = None
-    tokenizer = None
+    config = CONFIGS[args.model_type].from_pretrained(
+        args.model_dir if args.config_path is None else args.config_path)
+
+    tokenizer = TOKENIZERS[args.model_type].from_pretrained(
+        args.model_dir if args.vocab_path is None else args.vocab_path, do_lower_case=True)
+
+    train_dataset, dev_dataset, predict_dataset = None, None, None
     if args.do_train:
-        config = CONFIGS[args.model_type].from_pretrained(
-            args.model_dir if args.config_path is None else args.config_path)
-        tokenizer = TOKENIZERS[args.model_type].from_pretrained(
-            args.model_dir if args.vocab_path is None else args.vocab_path, do_lower_case=True)
-        trainer = train(config, tokenizer, args)
+        train_dataset = create_dataset('train', tokenizer, args)
 
-    if args.do_eval or args.do_test or args.do_export:
-        config = CONFIGS[args.model_type].from_pretrained(args.output_dir)
-        tokenizer = TOKENIZERS[args.model_type].from_pretrained(args.output_dir, do_lower_case=True)
-
-    if trainer is None and (args.do_eval or args.do_test or args.do_export):
-        input_types, input_shapes = return_types_and_shapes(for_trainer=True, is_multi_label=True)
-        trainer = Trainer(
-            input_types=input_types,
-            input_shapes=input_shapes,
-            use_xla=args.use_xla,
-            mixed_precision=args.mixed_precision,
-            single_device=args.single_device
-        )
-        trainer.build_model(get_model_fn(config, args))
     if args.do_eval:
-        tf.logging.info("***** Running Evaluation *****")
-        dev_dataset, num_dev_batch = load_dataset('dev', tokenizer, args)
-        trainer.prepare_dataset(dev_dataset, 'dev')
-        trainer.from_pretrained(args.output_dir)
-        result = evaluate(args, trainer, 'dev', num_dev_batch)
-        tf.logging.info("***** eval results *****")
-        report = result[0].split('\n')
-        with open(os.path.join(args.output_dir, "eval_result.txt"), 'w', encoding='utf-8') as w:
-            for r in report:
-                tf.logging.info(r)
-                w.write(r + '\n')
+        dev_dataset = create_dataset('dev', tokenizer, args)
 
-    if args.do_test:
-        test_dataset, num_test_batch = load_dataset('test', tokenizer, args)
+    if args.do_predict:
+        predict_dataset = create_dataset('test', tokenizer, args)
+
+    output_types, output_shapes = (train_dataset or dev_dataset or predict_dataset).output_types_and_shapes()
+    trainer = Trainer(
+        train_dataset=train_dataset,
+        eval_dataset=dev_dataset,
+        output_types=output_types,
+        output_shapes=output_shapes,
+        metric_fn=get_metric_fn(args.labels),
+        post_process_fn=get_post_process_fn(args.threshold),
+        use_xla=args.use_xla,
+        optimizer_type=args.optimizer_type,
+        learning_rate=args.learning_rate,
+        num_train_epochs=args.num_train_epochs,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        max_checkpoints=1,
+        max_grad=1.0,
+        warmup_proportion=args.warmup_proportion,
+        mixed_precision=args.mixed_precision,
+        single_device=args.single_device,
+        logging=True
+    )
+    trainer.build_model(model_fn=get_model_fn(config, args))
+    if args.do_train and train_dataset is not None:
+        trainer.compile()
+        trainer.from_pretrained(
+            args.model_dir if args.pretrained_checkpoint_path is None else args.pretrained_checkpoint_path)
+
+        trainer.train(
+            output_dir=args.output_dir,
+            evaluate_during_training=args.evaluate_during_training,
+            logging_steps=args.logging_steps,
+            saving_steps=args.saving_steps,
+            greater_is_better=True, metric_for_best_model='avg-f1')
+        config.save_pretrained(args.output_dir)
+        tokenizer.save_pretrained(args.output_dir)
+
+    if args.do_eval and dev_dataset is not None:
         trainer.from_pretrained(args.output_dir)
-        trainer.prepare_dataset(test_dataset, 'test')
-        outputs = trainer.predict('test', ['predictions'], num_test_batch)
+        eval_outputs = trainer.evaluate()
+        print(eval_outputs['report'])
+
+    if args.do_predict and predict_dataset is not None:
+        trainer.from_pretrained(args.output_dir)
+        outputs = trainer.predict('test', dataset=predict_dataset)
         labels = []
-        for prediction in outputs['predictions']:
-            one_hot = convert_to_one_hot(prediction, args.threshold)
+        for one_hot in outputs['one_hot']:
             labels.append(
                 [args.labels[i] for i in range(len(one_hot)) if one_hot[i] == 1]
             )

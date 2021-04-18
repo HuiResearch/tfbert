@@ -12,6 +12,7 @@ def multi_label_metric(y_true, y_pred, label_list, dict_report=False):
     :param y_true: 正确标签, one hot 类型，[[0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 0]]
     :param y_pred: 预测标签，one hot 类型，同上
     :param label_list: 标签列表，顺序对应one hot 位置
+    :param dict_report:
     :return:
     '''
 

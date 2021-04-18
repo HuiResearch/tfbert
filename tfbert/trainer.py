@@ -2,14 +2,23 @@
 # @FileName  :trainer.py
 # @Time      :2021/1/31 15:24
 # @Author    :huanghui
+import json
 import os
 import numpy as np
 import tensorflow.compat.v1 as tf
-from . import utils
-from tqdm import tqdm
+from . import utils, Dataset
 from .optimization import create_train_op, create_optimizer
 from .serving import save_pb
 import importlib
+from typing import Union, Optional, Dict
+from tqdm import trange, tqdm
+from .utils import ProgressBar, check_dir
+import platform
+
+if platform.system() == 'Windows':
+    bar_fn = ProgressBar  # win10下我使用tqdm老换行，所以自己写了一个
+else:
+    bar_fn = tqdm  # linux就用tqdm
 
 _trt_available = importlib.util.find_spec("tensorflow.python.compiler.tensorrt") is not None
 
@@ -29,10 +38,33 @@ class BaseTrainer:
             single_device=False,
             optimizer_type='adamw',
             learning_rate=5e-5,
-            num_train_steps=0,
+            num_train_epochs=1,
+            train_steps=0,
             num_warmup_steps=0,
+            warmup_proportion=0.,
+            gradient_accumulation_steps=1,
+            max_checkpoints=1,
+            max_grad=1.0,
             decay_method='poly',
             logging=True):
+        """
+        trainer基类
+        :param use_xla: 是否使用xla优化
+        :param optimizer: 自定义优化器，若是不传入，需要定义下方的优化器参数
+        :param optimizer_type: 优化器类型，目前支持 tfbert.optimization.create_optimizer内部的优化器
+        :param learning_rate: 学习率
+        :param num_train_epochs: 训练轮次
+        :param train_steps: 每一轮训练步数
+        :param gradient_accumulation_steps: 梯度累积步数
+        :param max_checkpoints: 最大保持的ckpt数量
+        :param max_grad: 最大梯度，超过进行裁剪
+        :param warmup_proportion: warmup比例
+        :param num_warmup_steps: warmup步数，如果传入了warmup_proportion，就不需要传了
+        :param decay_method: 学习率衰减方法，见 tfbert.optimization.create_optimizer方法
+        :param mixed_precision: 是否使用混合精度
+        :param single_device: 是否只使用一个卡，否则使用全部卡
+        :param logging: 是否显示 tf logging日志
+        """
         utils.setup_xla_flags()
         if logging:
             tf.logging.set_verbosity(tf.logging.INFO)
@@ -65,16 +97,24 @@ class BaseTrainer:
         self.compiled = False
         self.finished_build = False
 
-        self.num_train_steps = num_train_steps
+        self.num_train_epochs = num_train_epochs
+        self.max_checkpoints = max_checkpoints
+        self.max_grad = max_grad
+        self.num_train_steps = train_steps * num_train_epochs // gradient_accumulation_steps
         self.learning_rate = learning_rate
         self.num_warmup_steps = num_warmup_steps
-        self.decay_method = None if num_train_steps == 0 else decay_method
+        self.warmup_proportion = warmup_proportion
+        if warmup_proportion > 0:
+            self.num_warmup_steps = self.num_train_steps * warmup_proportion
+
+        self.gradient_accumulation_steps = gradient_accumulation_steps
+        self.decay_method = None if self.num_train_steps == 0 else decay_method
         self.optimizer_type = optimizer_type
         self.optimizer = optimizer
         self.mixed_precision = mixed_precision
 
         self.global_step = 0  # 全局步数
-        self._last_step = 0  # 上一次优化的全局步数
+        self.forward_steps = 0  # 前向步数
         self.global_step_changed = False  # 标识优化步数是否变换，避免梯度累积时重复验证的情况
 
     def check_init(self):
@@ -123,6 +163,7 @@ class BaseTrainer:
 
     def from_pretrained(self, model_dir_or_file):
         """
+        加载模型参数
         :param model_dir_or_file:
         :return:
         """
@@ -134,15 +175,19 @@ class BaseTrainer:
         tf.logging.info("  Load model from {}".format(ckpt))
 
     def init_variables(self):
+        """
+        初始化参数
+        :return:
+        """
         self.check_build()
         self.session.run(tf.global_variables_initializer())
         self.inited = True
         tf.logging.info("  Inited global variables.")
 
-    def save_pretrained(self, save_path_or_name):
+    def save_pretrained(self, save_path_or_name, add_global_step=True):
         self.check_build()
         ckpt = self.check_file(save_path_or_name)
-        self.saver.save(self.session, ckpt, self.global_step)
+        self.saver.save(self.session, ckpt, self.global_step if add_global_step else None)
         tf.logging.info("  Saved model to {}".format(ckpt))
 
     def prepare_optimizer(self):
@@ -179,41 +224,38 @@ class BaseTrainer:
         self.optimizer = optimizer
         if self.optimizer is None:
             self.prepare_optimizer()
+        if gradient_accumulation_steps is not None:
+            self.gradient_accumulation_steps = gradient_accumulation_steps
+        if max_checkpoints is not None:
+            self.max_checkpoints = max_checkpoints
+        if max_grad is not None:
+            self.max_grad = max_grad
 
         if var_list is None:
             var_list = tf.trainable_variables()
-        self.saver = tf.train.Saver(var_list=var_list, max_to_keep=max_checkpoints)
+        self.saver = tf.train.Saver(var_list=var_list, max_to_keep=self.max_checkpoints)
 
         self.train_op = create_train_op(
             self.optimizer,
             grads_and_vars=self.grads_and_vars,
-            max_grad=max_grad,
+            max_grad=self.max_grad,
             mixed_precision=self.mixed_precision,
-            gradient_accumulation_steps=gradient_accumulation_steps
+            gradient_accumulation_steps=self.gradient_accumulation_steps
         )
 
         self.compiled = True
 
     def _train_step(self, feed_dict):
         self.check_compile()
-        fetches = (self.train_op, tf.train.get_or_create_global_step(), self.train_outputs)
+        fetches = (self.train_op, self.train_outputs)
         feed_dict[tf.keras.backend.learning_phase()] = 1
         # 使用keras全局变量指定模式，操作dropout等api。
         outputs = self.session.run(fetches, feed_dict=feed_dict)
         loss = outputs[-1]['loss']
 
-        global_step = outputs[1]
-
-        if global_step > self._last_step:
-            self._last_step += 1
-            self.global_step += 1  # tensorflow全局步数从0开始，要加个1
-            self.global_step_changed = True
-        else:
-            self.global_step_changed = False
-
-        if global_step == 0 and self.global_step == 0:
+        self.forward_steps += 1
+        if self.forward_steps % self.gradient_accumulation_steps == 0:
             self.global_step += 1
-            self.global_step_changed = True
 
         return loss
 
@@ -328,18 +370,58 @@ class BaseTrainer:
 
 class Trainer(BaseTrainer):
     def __init__(self,
-                 input_types=None,
-                 input_shapes=None,
+                 train_dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
+                 eval_dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
+                 output_types=None,
+                 output_shapes=None,
+                 metric_fn=None,
+                 post_process_fn=None,
                  use_xla=False,
                  optimizer=None,
                  optimizer_type='adamw',
                  learning_rate=5e-5,
-                 num_train_steps=0,
+                 num_train_epochs=1,
+                 train_steps=0,
+                 eval_steps=0,
+                 gradient_accumulation_steps=1,
+                 max_checkpoints=1,
+                 max_grad=1.0,
+                 warmup_proportion=0.,
                  num_warmup_steps=0,
                  decay_method='poly',
                  mixed_precision=False,
                  single_device=False,
                  logging=True):
+        """
+        tensorflow训练trainer封装，采用tf dataset进行数据喂入，使用string handle动态控制dataset
+
+        先初始化，然后调用build_model传入model_fn构建模型；
+        训练的话需要接着调用compile配置优化op；
+        然后使用from_pretrained或者init_variables进行参数初始化；
+        之后可以train()进行训练，evaluate()进行验证，predict()进行预测；
+        :param train_dataset: 训练dataset，可以为tf.data.Dataset，也可以为我自定义的Dataset类型，定义代码在 tfbert.data.dataset.Dataset
+        :param eval_dataset: 验证dataset，同 train_dataset
+        :param output_types: 输入数据类型定义，可以使用我自定义的Dataset直接获取，方法有output_types_and_shapes和get_output_types_and_shapes，具体看相应注释
+        :param output_shapes: 输入数据的shape定义，同上。这俩在train_dataset或者dev_dataset传入的时候可以不传
+        :param metric_fn: 评估函数，该函数接收的输入为post_process_fn的输出，若是post_process_fn不为None的话，如果为None就是trainer.predict方法的结果
+        :param post_process_fn: 结果后处理函数，该方法接收输入为trainer.predict方法的结果，不需处理的话可以不传入
+        :param use_xla: 是否使用xla优化
+        :param optimizer: 自定义优化器，若是不传入，需要定义下方的优化器参数
+        :param optimizer_type: 优化器类型，目前支持 tfbert.optimization.create_optimizer内部的优化器
+        :param learning_rate: 学习率
+        :param num_train_epochs: 训练轮次
+        :param train_steps: 每一轮训练步数
+        :param eval_steps: 验证一轮的步数
+        :param gradient_accumulation_steps: 梯度累积步数
+        :param max_checkpoints: 最大保持的ckpt数量
+        :param max_grad: 最大梯度，超过进行裁剪
+        :param warmup_proportion: warmup比例
+        :param num_warmup_steps: warmup步数，如果传入了warmup_proportion，就不需要传了
+        :param decay_method: 学习率衰减方法，见 tfbert.optimization.create_optimizer方法
+        :param mixed_precision: 是否使用混合精度
+        :param single_device: 是否只使用一个卡，否则使用全部卡
+        :param logging: 是否显示 tf logging日志
+        """
         super(Trainer, self).__init__(
             use_xla,
             optimizer,
@@ -347,42 +429,45 @@ class Trainer(BaseTrainer):
             single_device,
             optimizer_type,
             learning_rate,
-            num_train_steps,
+            num_train_epochs,
+            train_steps,
             num_warmup_steps,
+            warmup_proportion,
+            gradient_accumulation_steps,
+            max_checkpoints,
+            max_grad,
             decay_method,
             logging
         )
-        """
-        tensorflow 模型多卡训练器，
-        如需使用多卡，需要设置好环境变量CUDA_VISIBLE_DEVICES=0,1,2,3 (卡由自己定义，这里表示使用0 1 2 3 四块卡)
-        默认使用设备的所有卡训练
-        用法：
-            训练： 1、创建一个trainer，如果需要使用混合精度计算，则需要在trainer创建时就传入optimizer
-                    因为内部多卡计算梯度时，需要使用optimizer计算梯度，如果不使用混合精度计算，也可以在trainer
-                    的compile阶段再传入optimizer
-                  2、创建dataset，使用trainer.prepare_dataset方法传入创建的dataset，mode设置为train、dev、test
-                     这样在train_step、eval_step、predict_step调用时会选择使用相应dataset进行计算
-                  3、传入model_fn, trainer.build_model(model_fn)，详情见build_model注释
-                  4、调用trainer.compile配置优化节点，需要传入梯度累积步数等参数
-                  5、调用trainer.compile()，训练阶段需要将trainer_op传入。
-                  6、如果加载预训练参数，调用trainer.from_pretrained()；如果不加载，调用trainer.init_variables()
-                  7、
-                  使用trainer.train_step()优化参数，返回loss
-                 验证调用trainer.eval_step()，会返回compile时的outputs和loss字段
-                 测试调用trainer.predict_step()，会返回outputs中的字段
-                 验证和预测记得先使用trainer.init_iterator()初始化
+        self.train_dataset = train_dataset
+        self.eval_dataset = eval_dataset
 
-            预测：1、创建一个trainer对象
-                 2、初始化一个模型，具体件trainer的build_model方法
-                 3、传入model_fn, trainer.build_model(model_fn)，详情见build_model注释
-                 4、调用trainer.prepare_dataset()，将预测dataset传入
-                 5、调用trainer.from_pretrained()加载参数
-                 6、开始使用trainer.predict_step()预测，返回的是model_fn返回的outputs字段
-                   当然可以直接使用trainer.predict()预测，详情见该方法注释
-        """
+        if (self.train_dataset or self.eval_dataset) is None:
+            if output_shapes is None and output_types is None:
+                raise ValueError(
+                    f"If you train_dataset and eval_dataset are both None, output_types and output_shapes can not be None")
+        else:
+            if isinstance(self.train_dataset or self.eval_dataset, Dataset):
+                output_types, output_shapes = (self.train_dataset or self.eval_dataset).output_types_and_shapes()
+            else:
+                output_types, output_shapes = Dataset.get_output_types_and_shapes(
+                    (self.train_dataset or self.eval_dataset))
+
+        self.num_train_epochs = num_train_epochs
+        self.gradient_accumulation_steps = gradient_accumulation_steps
+        if isinstance(self.train_dataset, Dataset):
+            self.train_steps = len(train_dataset)
+            self.num_train_steps = self.train_steps * num_train_epochs // gradient_accumulation_steps
+            if warmup_proportion > 0:
+                self.num_warmup_steps = self.num_train_steps * warmup_proportion
+
+        self.eval_steps = eval_steps
+        if isinstance(self.eval_dataset, Dataset):
+            self.eval_steps = len(self.eval_dataset)
+
         # mode 控制接入的是训练、验证或测试dataset
         self.mode = tf.placeholder(tf.string, shape=[])
-        iterator = tf.data.Iterator.from_string_handle(self.mode, input_types, input_shapes)
+        iterator = tf.data.Iterator.from_string_handle(self.mode, output_types, output_shapes)
         inputs = iterator.get_next()
 
         # 分发 dataset
@@ -395,6 +480,8 @@ class Trainer(BaseTrainer):
         self.iterator = {
             'train': None, 'dev': None, 'test': None
         }
+        self.metric_fn = metric_fn
+        self.post_process_fn = post_process_fn
 
     def device_index(self, device):
         return self.devices.index(device)
@@ -417,7 +504,7 @@ class Trainer(BaseTrainer):
         return self.inputs[self.device_index(device)]
 
     def prepare_dataset(
-            self, dataset, mode='train'):
+            self, dataset: Union[tf.data.Dataset, Dataset], mode='train'):
         """
         准备模型dataset，mode可传人train、dev、test，
         传入mode后会将dataset的生成器绑定在该mode对应的string_handle，
@@ -426,6 +513,8 @@ class Trainer(BaseTrainer):
         :param mode:
         :return:
         """
+        if isinstance(dataset, Dataset):
+            dataset = dataset.format_to_tf_dataset()
         if mode not in self.mode_keys:
             raise ValueError("mode must be {}".format("、".join(self.mode_keys.keys())))
         if mode == 'train':
@@ -549,14 +638,14 @@ class Trainer(BaseTrainer):
 
     def train_step(self):
         """
-        训练一步
+        训练一步，调用train_dataset进行训练，运行op为train op，返回loss
         """
         feed_dict = {self.mode: self.mode_keys['train']}
         return self._train_step(feed_dict)
 
     def eval_step(self):
         """
-        验证一步
+        验证一步，调用dev_dataset验证，运行op为trainer的dev_outputs
         :return: loss + 配置的outputs
         """
         feed_dict = {self.mode: self.mode_keys['dev']}
@@ -564,25 +653,164 @@ class Trainer(BaseTrainer):
 
     def predict_step(self):
         """
-                预测一步
+                预测一步,调用test_dataset验证，运行op为trainer的 test_outputs
                 :return: 配置的outputs
                 """
         feed_dict = {self.mode: self.mode_keys['test']}
         return self._predict_step(feed_dict)
 
-    def predict(self, set_type, output_names, total_steps=None, dataset=None):
+    def check_dataset_and_steps(self, set_type, dataset, steps):
+        assert set_type in ['dev', 'train']
+        self_dataset = self.eval_dataset if set_type == 'dev' else self.train_dataset
+        if isinstance(dataset, Dataset):
+            steps = dataset.num_batch
+        elif isinstance(self_dataset, Dataset):
+            steps = self_dataset.num_batch
+
+        if set_type == 'dev' and steps > 0:
+            self.eval_steps = steps
+
+        if set_type == 'train' and steps > 0:
+            self.train_steps = steps
+            self.num_train_steps = self.train_steps * self.num_train_epochs // self.gradient_accumulation_steps
+            if self.warmup_proportion > 0:
+                self.num_warmup_steps = self.num_train_steps * self.warmup_proportion
+
+        if set_type == 'train' and self.train_steps <= 0:
+            raise ValueError(
+                "Train steps can not be None if you want to train. Maybe you prapre a dataset whoose class is Dataset")
+
+        if dataset is not None:
+            self.prepare_dataset(dataset, mode=set_type)
+        if self_dataset is not None and self.iterator[set_type] is None:
+            self.prepare_dataset(self_dataset, mode=set_type)
+        if self.iterator[set_type] is None:
+            raise ValueError(f"set_type: {set_type} should be prepared.")
+        return steps
+
+    def evaluate(
+            self,
+            eval_dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
+            eval_steps=None, metric_fn=None,
+            post_process_fn=None):
+        if metric_fn is None and self.metric_fn is None:
+            raise ValueError("Please pass in the evaluation function (metric_fn)!")
+        elif self.metric_fn is not None:
+            metric_fn = self.metric_fn
+
+        self.check_init()
+        self.check_dataset_and_steps('dev', eval_dataset, eval_steps)
+        outputs = self.predict(
+            'dev', list(self.eval_outputs.keys()), self.eval_steps,
+            post_process_fn=post_process_fn)
+        metric = metric_fn(outputs)
+        return metric
+
+    def train(self,
+              train_dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
+              train_steps=None,
+              output_dir=None,
+              evaluate_during_training=False,
+              metric_fn=None,
+              post_process_fn=None,
+              logging_steps=0,
+              saving_steps=0,
+              greater_is_better=True,
+              metric_for_best_model=None,
+              eval_dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
+              eval_steps=None):
+        self.check_compile()
+        self.check_init()
+        self.check_dataset_and_steps('train', train_dataset, train_steps)
+        self.check_dataset_and_steps('dev', eval_dataset, eval_steps)
+        if evaluate_during_training:
+            if metric_fn is None and self.metric_fn is None:
+                raise ValueError("Please pass in the evaluation function (metric_fn)!")
+            if post_process_fn is None and self.post_process_fn is None:
+                tf.logging.warn("post_process_fn is None, we will not process the prediction result")
+            if logging_steps <= 0:
+                raise ValueError(
+                    "If you need to verify while training, please ensure that the logging steps are greater than 0")
+            if metric_for_best_model is None:
+                raise ValueError(
+                    "If you need to verify while training, please provide the evaluation field (metric_for_best_model)")
+        if output_dir is None:
+            tf.logging.info("output_dir is None, we will save files to 'output' by default")
+            output_dir = "output"
+        check_dir(output_dir)
+
+        tf.logging.info("***** Running training *****")
+        tf.logging.info("  Num epochs = {}".format(self.num_train_epochs))
+        tf.logging.info("  optimizer steps = %d", self.num_train_steps)
+        tf.logging.info("  Num devices = {}".format(self.num_devices))
+        tf.logging.info("  Num params = {}".format(self.num_params))
+
+        report = {}
+        never_saved = True
+        best_score = 0 if greater_is_better else 1e8
+        for epoch in trange(self.num_train_epochs):
+            epoch_iter = bar_fn(range(self.train_steps), desc='epoch {} '.format(epoch + 1))
+            for step in epoch_iter:
+                train_loss = self.train_step()
+                epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
+
+                if evaluate_during_training and (
+                        self.global_step % logging_steps == 0 or self.global_step == self.num_train_steps):
+                    metric = self.evaluate(self.eval_dataset, self.eval_steps, metric_fn, post_process_fn)
+                    score = metric[metric_for_best_model]
+                    should_save = ((score > best_score) if greater_is_better else (score < best_score))
+                    if should_save:
+                        best_score = score
+                        self.save_pretrained(
+                            output_dir, add_global_step=False
+                        )
+                        never_saved = False
+                    tf.logging.info("***** eval results *****")
+                    tf.logging.info(" global step : {}".format(self.global_step))
+                    tf.logging.info(" eval score : {:.4f}".format(score))
+                    tf.logging.info(" best score : {:.4f}".format(best_score))
+                    report[self.global_step] = metric
+                if not evaluate_during_training and (saving_steps > 0 and self.global_step % saving_steps == 0):
+                    check_dir(output_dir)
+                    self.save_pretrained(output_dir, add_global_step=True)
+                    never_saved = False
+        if never_saved:
+            self.save_pretrained(output_dir, add_global_step=False)
+
+        report['best_score'] = best_score
+        json.dump(
+            report, open(os.path.join(output_dir, 'train_report.json'), 'w', encoding='utf-8'),
+            ensure_ascii=False, indent=4)
+        tf.logging.info("***** Finished Training *****")
+        return report
+
+    def predict(self, set_type, output_names=None, total_steps=None,
+                dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
+                post_process_fn=None):
         """
         预测的简易接口，若是自己有需求，可以调用predict_step()自行写预测代码
         :param set_type: 预测模式，dev、test，输入哪个调用哪个数据集预测
         :param output_names: 返回的字段类型，字段定义需要和构建模型时定义的outputs键值一样
         :param total_steps: 可传入，dataset中包含的数据batch数量，以便于打印进度条
+        :param dataset:
+        :param post_process_fn: 结果后处理方法，若是传入，则将预测结果传入进行处理
         :return: 字典，键值为output_names
         """
+        if isinstance(dataset, Dataset):
+            total_steps = len(dataset)
         if dataset is not None:
             self.prepare_dataset(dataset, set_type)
+
+        if post_process_fn is None and self.post_process_fn is None:
+            tf.logging.warn("post_process_fn is None, we will not process the prediction result")
+        elif self.post_process_fn is not None:
+            post_process_fn = self.post_process_fn
+
         outputs = {}
+        if output_names is None:
+            output_names = list(self.test_outputs.keys())
         for output_name in output_names:
-            if output_name not in self.test_outputs or output_name not in self.eval_outputs:
+            if output_name not in self.test_outputs and output_name not in self.eval_outputs:
                 tf.logging.warn(
                     f"{output_name} is not defined when building the model, "
                     f"the returned output will not contain {output_name}")
@@ -616,6 +844,8 @@ class Trainer(BaseTrainer):
         if 'loss' in outputs:
             outputs['loss'] /= count
         predict_iter.close()
+        if post_process_fn is not None:
+            outputs = post_process_fn(outputs)
         return outputs
 
 
@@ -631,7 +861,12 @@ class SimplerTrainer(BaseTrainer):
                  single_device=False,
                  optimizer_type='adamw',
                  learning_rate=5e-5,
-                 num_train_steps=0,
+                 num_train_epochs=1,
+                 train_steps=0,
+                 gradient_accumulation_steps=1,
+                 max_checkpoints=1,
+                 max_grad=1.0,
+                 warmup_proportion=0,
                  num_warmup_steps=0,
                  decay_method='poly',
                  logging=True):
@@ -642,8 +877,13 @@ class SimplerTrainer(BaseTrainer):
             single_device,
             optimizer_type,
             learning_rate,
-            num_train_steps,
+            num_train_epochs,
+            train_steps,
             num_warmup_steps,
+            warmup_proportion,
+            gradient_accumulation_steps,
+            max_checkpoints,
+            max_grad,
             decay_method,
             logging
         )

@@ -45,14 +45,14 @@ class InputFeature(BaseClass):
                  input_ids: List[int],
                  input_mask: List[int] = None,
                  token_type_ids: List[int] = None,
-                 label_id: List[int] = None,
+                 label_ids: List[int] = None,
                  tok_to_orig_index: List[int] = None,
                  ex_id=None):
         self.guid = guid
         self.input_ids = input_ids
         self.input_mask = input_mask
         self.token_type_ids = token_type_ids
-        self.label_id = label_id
+        self.label_ids = label_ids
         self.ex_id = ex_id
         self.tok_to_orig_index = tok_to_orig_index
 
@@ -120,7 +120,7 @@ def convert_example_to_feature(
         guid=str(0),
         input_ids=input_ids, input_mask=input_mask,
         token_type_ids=token_type_ids,
-        label_id=label_ids if has_label else None,
+        label_ids=label_ids if has_label else None,
         tok_to_orig_index=tok_to_orig_index
     )
 
@@ -188,7 +188,7 @@ def create_dataset_by_gen(
                 "input_ids": ex.input_ids,
                 "input_mask": ex.input_mask,
                 "token_type_ids": ex.token_type_ids,
-                'label_ids': ex.label_id,
+                'label_ids': ex.label_ids,
             }
 
     output_types, output_shapes = return_types_and_shapes(
@@ -228,6 +228,6 @@ def create_dataset_from_slices(
                 [f.token_type_ids for f in features],
                 dtype=tf.int32),
         "label_ids":
-            tf.constant([f.label_id for f in features], dtype=tf.int32),
+            tf.constant([f.label_ids for f in features], dtype=tf.int32),
     })
     return process_dataset(dataset, batch_size, len(features), set_type)

@@ -46,13 +46,13 @@ class InputFeature(BaseClass):
                  input_ids,
                  input_mask=None,
                  token_type_ids=None,
-                 label_id=None,
+                 label_ids=None,
                  ex_id=None):
         self.guid = guid
         self.input_ids = input_ids
         self.input_mask = input_mask
         self.token_type_ids = token_type_ids
-        self.label_id = label_id
+        self.label_ids = label_ids
         self.ex_id = ex_id
 
 
@@ -82,7 +82,7 @@ def convert_example_to_feature(example: InputExample,
         input_ids=inputs['input_ids'],
         input_mask=inputs['input_mask'],
         token_type_ids=inputs['token_type_ids'],
-        label_id=label_id,
+        label_ids=label_id,
         ex_id=example.guid
     )
 
@@ -163,7 +163,7 @@ def create_dataset_by_gen(
                 "input_ids": ex.input_ids,
                 "input_mask": ex.input_mask,
                 "token_type_ids": ex.token_type_ids,
-                'label_ids': ex.label_id,
+                'label_ids': ex.label_ids,
             }
 
     output_types, output_shapes = return_types_and_shapes(
@@ -206,6 +206,6 @@ def create_dataset_from_slices(
                 [f.token_type_ids for f in features],
                 dtype=tf.int32),
         "label_ids":
-            tf.constant([f.label_id for f in features], dtype=tf.int32),
+            tf.constant([f.label_ids for f in features], dtype=tf.int32),
     })
     return process_dataset(dataset, batch_size, len(features), set_type)

@@ -30,4 +30,7 @@ from .utils import (
 from .optimization import (
     AdamWeightDecayOptimizer, LAMBOptimizer,
     lr_schedule, create_optimizer, create_train_op)
+from .data import (Dataset, collate_batch, sequence_padding,
+                   single_example_to_features,
+                   multiple_convert_examples_to_features)
 from .trainer import Trainer, SimplerTrainer

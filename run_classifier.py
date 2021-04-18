@@ -1,28 +1,21 @@
-# -*- coding:utf-8 -*-
-# @FileName  :run_classifier.py
-# @Time      :2021/1/31 19:45
-# @Author    :huanghui
-import platform
-import tensorflow.compat.v1 as tf
-from tfbert.data.classification import (
-    InputExample, convert_examples_to_features,
-    create_dataset_by_gen, return_types_and_shapes)
-from tfbert import (SequenceClassification,
-                    CONFIGS, TOKENIZERS,
-                    set_seed, ProgressBar,
-                    create_optimizer,
-                    devices, Trainer)
-from tqdm import tqdm
-import pandas as pd
-import numpy as np
-from sklearn.metrics import accuracy_score
+# -*- coding: UTF-8 -*-
+__author__ = 'huanghui'
+__date__ = '2021/4/18 15:06'
+__project__ = 'tfbert'
+
+import json
 import os
 import argparse
-
-if platform.system() == 'Windows':
-    bar_fn = ProgressBar  # win10下我使用tqdm老换行，所以自己写了一个
-else:
-    bar_fn = tqdm  # linux就用tqdm
+import tensorflow.compat.v1 as tf
+from tfbert import (
+    Trainer, Dataset,
+    SequenceClassification,
+    CONFIGS, TOKENIZERS, devices, set_seed)
+from tfbert.data.classification import convert_examples_to_features, InputExample
+from sklearn.metrics import accuracy_score
+import pandas as pd
+from typing import Dict
+import numpy as np
 
 
 def create_args():
@@ -55,12 +48,12 @@ def create_args():
 
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
     parser.add_argument("--do_eval", action="store_true", help="Whether to run eval on the dev set.")
-    parser.add_argument("--do_test", action="store_true", help="Whether to run test on the test set.")
+    parser.add_argument("--do_predict", action="store_true", help="Whether to run test on the test set.")
     parser.add_argument("--evaluate_during_training", action="store_true", help="是否边训练边验证")
     parser.add_argument("--do_export", action="store_true", help="将模型导出为pb格式.")
 
     parser.add_argument("--logging_steps", default=1000, type=int, help="训练时每隔几步验证一次")
-    parser.add_argument("--save_steps", default=1000, type=int, help="训练时每隔几步保存一次")
+    parser.add_argument("--saving_steps", default=1000, type=int, help="训练时每隔几步保存一次")
     parser.add_argument("--random_seed", default=42, type=int, help="随机种子")
     parser.add_argument("--threads", default=8, type=int, help="数据处理进程数")
     parser.add_argument("--max_checkpoints", default=1, type=int, help="模型保存最大数量，默认只保存一个")
@@ -81,27 +74,28 @@ def create_args():
     return args
 
 
-def create_examples(filename):
+def create_dataset(set_type, tokenizer, args):
+    filename_map = {
+        'train': args.train_file, 'dev': args.dev_file, 'test': args.test_file
+    }
     examples = []
-    datas = pd.read_csv(filename, encoding='utf-8', sep='\t').values.tolist()
+    datas = pd.read_csv(filename_map[set_type], encoding='utf-8', sep='\t').values.tolist()
     for data in datas:
         examples.append(InputExample(
             guid=0, text_a=data[1], label=data[0]
         ))
-    return examples
-
-
-def load_dataset(set_type, tokenizer, args):
-    filename_map = {
-        'train': args.train_file, 'dev': args.dev_file, 'test': args.test_file
-    }
-    examples = create_examples(filename_map[set_type])
     features = convert_examples_to_features(
         examples, tokenizer,
-        max_length=args.max_seq_length, set_type=set_type,
+        max_length=args.max_seq_length, set_type='train',
         label_list=args.labels, threads=args.threads)
-    dataset, steps_one_epoch = create_dataset_by_gen(features, args.batch_size, set_type)
-    return dataset, steps_one_epoch
+    dataset = Dataset(features,
+                      is_training=bool(set_type == 'train'),
+                      batch_size=args.batch_size,
+                      drop_last=bool(set_type == 'train'),
+                      buffer_size=len(features),
+                      max_length=args.max_seq_length)
+    dataset.format_as(['input_ids', 'input_mask', 'token_type_ids', 'label_ids'])
+    return dataset
 
 
 def get_model_fn(config, args):
@@ -110,10 +104,12 @@ def get_model_fn(config, args):
             model_type=args.model_type, config=config,
             num_classes=len(args.labels), is_training=is_training,
             **inputs)
-        loss = model.loss / args.gradient_accumulation_steps
-        return {
-            'loss': loss,
-            'outputs': {'logits': model.logits, 'label_ids': inputs['label_ids']}}
+
+        outputs = {'outputs': {'logits': model.logits, 'label_ids': inputs['label_ids']}}
+        if model.loss is not None:
+            loss = model.loss / args.gradient_accumulation_steps
+            outputs['loss'] = loss
+        return outputs
 
     return model_fn
 
@@ -137,136 +133,81 @@ def get_serving_fn(config, args):
     return serving_fn
 
 
-def evaluate(trainer, set_type='dev', steps=None):
-    outputs = trainer.predict(set_type, ['logits', 'label_ids'], steps)
+def metric_fn(outputs: Dict) -> Dict:
+    """
+    这里定义评估函数
+    :param outputs: trainer evaluate 返回的预测结果，model fn的outputs包含哪些字段就会有哪些字段
+    :return: 需要返回字典结果
+    """
     predictions = np.argmax(outputs['logits'], -1)
     score = accuracy_score(outputs['label_ids'], predictions)
-    return score
-
-
-def train(config, tokenizer, args):
-    train_dataset, num_train_batch = load_dataset('train', tokenizer, args)
-
-    if args.evaluate_during_training:
-        dev_dataset, num_dev_batch = load_dataset('dev', tokenizer, args)
-    else:
-        dev_dataset, num_dev_batch = None, None
-
-    t_total = num_train_batch * args.num_train_epochs // args.gradient_accumulation_steps
-
-    optimizer = create_optimizer(
-        args.learning_rate,
-        num_train_steps=t_total,
-        num_warmup_steps=t_total * args.warmup_proportion,
-        optimizer_type=args.optimizer_type,
-        mixed_precision=args.mixed_precision
-    )
-    input_types, input_shapes = return_types_and_shapes(for_trainer=True)
-    # 初始化trainer
-    trainer = Trainer(
-        input_types=input_types,
-        input_shapes=input_shapes,
-        optimizer=optimizer,  # 因为使用混合精度训练需要使用rewrite过的优化器计算梯度，所以需要先传入，如果不使用就可以在compile传入
-        use_xla=args.use_xla,
-        mixed_precision=args.mixed_precision,
-        single_device=args.single_device
-    )
-
-    # 构建模型
-    trainer.build_model(get_model_fn(config, args))
-    # 配置trainer优化器
-    trainer.compile(
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        max_grad=1.,
-    )
-    trainer.prepare_dataset(train_dataset, 'train')
-    if dev_dataset is not None:
-        trainer.prepare_dataset(dev_dataset, 'dev')
-
-    # 预训练模型加载预训练参数，若不加载，调用trainer.init_variables()
-    trainer.from_pretrained(
-        args.model_dir if args.pretrained_checkpoint_path is None else args.pretrained_checkpoint_path)
-
-    tf.logging.info("***** Running training *****")
-    tf.logging.info("  Num epochs = {}".format(args.num_train_epochs))
-    tf.logging.info("  batch size = {}".format(args.batch_size))
-    tf.logging.info("  Gradient Accumulation steps = {}".format(args.gradient_accumulation_steps))
-    tf.logging.info("  Total train batch size (accumulation) = {}".format(
-        args.batch_size * args.gradient_accumulation_steps))
-    tf.logging.info("  optimizer steps = %d", t_total)
-    tf.logging.info("  Num devices = {}".format(trainer.num_devices))
-    tf.logging.info("  Num params = {}".format(trainer.num_params))
-    best_score = 0.
-    for epoch in range(args.num_train_epochs):
-        epoch_iter = bar_fn(range(num_train_batch), desc='epoch {} '.format(epoch + 1))
-        for step in epoch_iter:
-            train_loss = trainer.train_step()
-            epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
-
-            if args.evaluate_during_training and trainer.global_step_changed and (
-                    trainer.global_step % args.logging_steps == 0 or trainer.global_step == t_total):
-                score = evaluate(trainer, 'dev', num_dev_batch)
-                if score > best_score:
-                    best_score = score
-                    trainer.save_pretrained(args.output_dir)
-                    config.save_pretrained(args.output_dir)
-                    tokenizer.save_pretrained(args.output_dir)
-                tf.logging.info("***** eval results *****")
-                tf.logging.info(" global step : {}".format(trainer.global_step))
-                tf.logging.info(" eval score : {:.4f}".format(score))
-                tf.logging.info(" best score : {:.4f}".format(best_score))
-            if not args.evaluate_during_training and (
-                    trainer.global_step % args.save_steps == 0 or trainer.global_step == t_total):
-                trainer.save_pretrained(args.output_dir)
-                config.save_pretrained(args.output_dir)
-                tokenizer.save_pretrained(args.output_dir)
-        epoch_iter.close()
-
-    tf.logging.info("***** Finished training *****")
-    return trainer  # 返回配置好的trainer给验证测试调用
+    return {'accuracy': score}
 
 
 def main():
     args = create_args()
     set_seed(args.random_seed)
 
-    trainer = None
-    config = None
-    tokenizer = None
+    config = CONFIGS[args.model_type].from_pretrained(
+        args.model_dir if args.config_path is None else args.config_path)
+
+    tokenizer = TOKENIZERS[args.model_type].from_pretrained(
+        args.model_dir if args.vocab_path is None else args.vocab_path, do_lower_case=True)
+
+    train_dataset, dev_dataset, predict_dataset = None, None, None
     if args.do_train:
-        config = CONFIGS[args.model_type].from_pretrained(
-            args.model_dir if args.config_path is None else args.config_path)
-        tokenizer = TOKENIZERS[args.model_type].from_pretrained(
-            args.model_dir if args.vocab_path is None else args.vocab_path, do_lower_case=True)
-        trainer = train(config, tokenizer, args)
+        train_dataset = create_dataset('train', tokenizer, args)
 
-    if args.do_eval or args.do_test or args.do_export:
-        config = CONFIGS[args.model_type].from_pretrained(args.output_dir)
-        tokenizer = TOKENIZERS[args.model_type].from_pretrained(args.output_dir, do_lower_case=True)
-
-    if trainer is None and (args.do_eval or args.do_test or args.do_export):
-        input_types, input_shapes = return_types_and_shapes(for_trainer=True)
-        trainer = Trainer(
-            input_types=input_types,
-            input_shapes=input_shapes,
-            use_xla=args.use_xla,
-            mixed_precision=args.mixed_precision,
-            single_device=args.single_device
-        )
-        trainer.build_model(get_model_fn(config, args))
     if args.do_eval:
-        dev_dataset, num_dev_batch = load_dataset('dev', tokenizer, args)
-        trainer.prepare_dataset(dev_dataset, 'dev')
-        trainer.from_pretrained(args.output_dir)
-        score = evaluate(trainer, 'dev', num_dev_batch)
-        tf.logging.info("***** eval results *****")
-        tf.logging.info(" eval score : {:.4f}".format(score))
+        dev_dataset = create_dataset('dev', tokenizer, args)
 
-    if args.do_test:
-        test_dataset, num_test_batch = load_dataset('test', tokenizer, args)
+    if args.do_predict:
+        predict_dataset = create_dataset('test', tokenizer, args)
+
+    output_types, output_shapes = (train_dataset or dev_dataset or predict_dataset).output_types_and_shapes()
+    trainer = Trainer(
+        train_dataset=train_dataset,
+        eval_dataset=dev_dataset,
+        output_types=output_types,
+        output_shapes=output_shapes,
+        metric_fn=metric_fn,
+        use_xla=args.use_xla,
+        optimizer_type=args.optimizer_type,
+        learning_rate=args.learning_rate,
+        num_train_epochs=args.num_train_epochs,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        max_checkpoints=1,
+        max_grad=1.0,
+        warmup_proportion=args.warmup_proportion,
+        mixed_precision=args.mixed_precision,
+        single_device=args.single_device,
+        logging=True
+    )
+    trainer.build_model(model_fn=get_model_fn(config, args))
+    if args.do_train and train_dataset is not None:
+        trainer.compile()
+        trainer.from_pretrained(
+            args.model_dir if args.pretrained_checkpoint_path is None else args.pretrained_checkpoint_path)
+
+        trainer.train(
+            output_dir=args.output_dir,
+            evaluate_during_training=args.evaluate_during_training,
+            logging_steps=args.logging_steps,
+            saving_steps=args.saving_steps,
+            greater_is_better=True, metric_for_best_model='accuracy')
+        config.save_pretrained(args.output_dir)
+        tokenizer.save_pretrained(args.output_dir)
+
+    if args.do_eval and dev_dataset is not None:
         trainer.from_pretrained(args.output_dir)
-        trainer.prepare_dataset(test_dataset, 'test')
-        outputs = trainer.predict('test', ['logits'], num_test_batch)
+        eval_outputs = trainer.evaluate()
+        print(json.dumps(
+            eval_outputs, ensure_ascii=False, indent=4
+        ))
+
+    if args.do_predict and predict_dataset is not None:
+        trainer.from_pretrained(args.output_dir)
+        outputs = trainer.predict('test', ['logits'], dataset=predict_dataset)
         label_ids = np.argmax(outputs['logits'], axis=-1)
         labels = list(map(lambda x: args.labels[x], label_ids))
         open(

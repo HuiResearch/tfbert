@@ -40,6 +40,11 @@ def set_seed(seed):
     tf.set_random_seed(seed)
 
 
+def check_dir(dir_):
+    if not os.path.exists(dir_):
+        os.makedirs(dir_)
+
+
 def gpu_is_available():
     sess_conf = tf.ConfigProto()
     sess_conf.gpu_options.allow_growth = True

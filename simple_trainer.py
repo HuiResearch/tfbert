@@ -4,7 +4,7 @@
 # @Author    :huanghui
 import numpy as np
 
-from tfbert.data import SimpleDataset
+from tfbert.data import Dataset
 from tfbert.models import create_word_embeddings, dropout, create_initializer
 from tfbert.models.loss import cross_entropy_loss
 from tfbert.models.layers import conv2d_layer, max_pooling_layer
@@ -99,28 +99,40 @@ def create_vocab(train_file, dev_file):
     return vocab2id
 
 
-def load_data(filename, vocab2id, label2id):
+def load_dataset(filename, is_training, batch_size, max_seq_length, vocab2id, label2id):
     data = pd.read_csv(filename, encoding='utf-8', sep='\t').values.tolist()
     examples = []
     for d in data:
         label, text = d
         id_ = list(map(lambda x: vocab2id[x] if x in vocab2id else vocab2id['<UNK>'], list(text)))
-        id_ = id_[:32]
-        id_ += [vocab2id["<PAD>"]] * (32 - len(id_))
+        id_ = id_[:max_seq_length]
+        id_ += [vocab2id["<PAD>"]] * (max_seq_length - len(id_))
         examples.append({'input_ids': id_, 'label_ids': label2id[label]})
-    return examples
+    dataset = Dataset(examples,
+                      is_training=is_training,
+                      batch_size=batch_size,
+                      drop_last=is_training,
+                      buffer_size=len(examples),
+                      max_length=max_seq_length)
+    dataset.format_as(['input_ids', 'label_ids'])
+    return dataset
 
 
+max_length = 32
+batch_size = 32
 data_dir = "D:/python/data/data/classification"
 vocab2id = create_vocab(data_dir + "/train.csv", data_dir + "/dev.csv")
 label2id = {'体育': 0, '娱乐': 1, '家居': 2, '房产': 3, '教育': 4}
 
-train_data = load_data(data_dir + "/train.csv", vocab2id, label2id)
-dev_data = load_data(data_dir + "/dev.csv", vocab2id, label2id)
-train_dataset = SimpleDataset(train_data, batch_size=64, is_training=True, padding=True,
-                              max_length=32, pad_id=vocab2id['<PAD>'])
-dev_dataset = SimpleDataset(dev_data, batch_size=64, is_training=False, padding=True,
-                            max_length=32, pad_id=vocab2id['<PAD>'])
+train_dataset = load_dataset(
+    data_dir + "/train.csv",
+    True, batch_size, max_length, vocab2id, label2id
+)
+dev_dataset = load_dataset(
+    data_dir + "/dev.csv",
+    False, batch_size, max_length, vocab2id, label2id
+)
+
 trainer = SimplerTrainer(
     optimizer_type='adamw',
     learning_rate=5e-5

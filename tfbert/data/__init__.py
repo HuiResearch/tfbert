@@ -9,7 +9,6 @@ import copy
 from multiprocessing import cpu_count, Pool
 from tqdm import tqdm
 import tensorflow.compat.v1 as tf
-from .generator import SimpleDataset, collate_batch, sequence_padding
 
 
 class BaseClass:
@@ -62,3 +61,6 @@ def process_dataset(dataset, batch_size, num_features, set_type):
     else:
         num_batch_per_epoch = (num_features + batch_size - 1) // batch_size
     return dataset, num_batch_per_epoch
+
+
+from .dataset import Dataset, collate_batch, sequence_padding
