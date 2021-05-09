@@ -13,6 +13,7 @@ import importlib
 from typing import Union, Optional, Dict
 from tqdm import trange, tqdm
 from .utils import ProgressBar, check_dir
+from . import adversarial
 import platform
 
 if platform.system() == 'Windows':
@@ -529,8 +530,9 @@ class Trainer(BaseTrainer):
             self,
             model_fn,
             only_test=False,
-            use_fgm=False,
-            layer_name='word_embeddings'):
+            adversarial_type=None,
+            **kwargs
+    ):
         """
         传入model_fn，也就是 model 构造函数，model_fn只能接收inputs和is_training
 
@@ -555,8 +557,7 @@ class Trainer(BaseTrainer):
 
         :param model_fn:
         :param only_test: 是否只测试，True的话梯度这些就不计算了
-        :param use_fgm:  是否使用fgm对抗训练
-        :param layer_name:
+        :param adversarial_type: 对抗训练类型
         :return:
         """
 
@@ -566,6 +567,22 @@ class Trainer(BaseTrainer):
                 "we will create a optimizer.")
             # 混合精度需要使用开启fp16的优化器计算梯度，因此不能使用tf.gradient
             self.prepare_optimizer()
+
+        adversarial_params = {
+            'fgm': {'layer_name': 'word_embeddings', 'epsilon': 0.5},
+            'pgd': {'layer_name': 'word_embeddings', 'epsilon': 0.05, 'n_loop': 2},
+            'freelb': {'layer_name': 'word_embeddings', 'epsilon': 0.3, 'n_loop': 3}
+        }
+        if adversarial_type is not None:
+            assert adversarial_type in adversarial_params
+
+            for k, v in kwargs.items():
+                if k in adversarial_params[adversarial_type]:
+                    adversarial_params[k] = v
+
+            if adversarial_type == 'freelb':
+                adversarial_params[adversarial_type]['batch_size'] = kwargs['batch_size']
+                adversarial_params[adversarial_type]['max_length'] = kwargs['max_length']
 
         tower_losses, tower_grads_and_vars = [], []
         outputs = {}
@@ -578,19 +595,44 @@ class Trainer(BaseTrainer):
 
                 # 直接默认都是训练模式，然后使用tf.keras.backend.learning_phase()控制dropout等layer
                 inputs = self.get_inputs(device)
-                model_output = model_fn(inputs, True)
+                if adversarial_type == 'fgm':
+                    model_output = adversarial.fgm(
+                        model_fn, inputs, optimizer=self.optimizer,
+                        layer_name=adversarial_params['fgm']['layer_name'],
+                        epsilon=adversarial_params['fgm']['epsilon'])
 
-                if 'loss' in model_output:
+                elif adversarial_type == 'pgd':
+                    model_output = adversarial.pgd(
+                        model_fn, inputs, optimizer=self.optimizer,
+                        layer_name=adversarial_params['pgd']['layer_name'],
+                        epsilon=adversarial_params['pgd']['epsilon'],
+                        n_loop=adversarial_params['pgd']['n_loop']
+                    )
+                elif adversarial_type == 'freelb':
+                    model_output = adversarial.freelb(
+                        model_fn, inputs, adversarial_params['freelb']['batch_size'],
+                        adversarial_params['freelb']['max_length'],
+                        optimizer=self.optimizer,
+                        layer_name=adversarial_params['freelb']['layer_name'],
+                        epsilon=adversarial_params['freelb']['epsilon'],
+                        n_loop=adversarial_params['freelb']['n_loop']
+                    )
+                else:
+                    model_output = model_fn(inputs, True)
+
+                if isinstance(model_output, adversarial.AdversarialOutput):
+                    grads_and_vars = model_output.grads_and_vars
+                    tower_grads_and_vars.append(grads_and_vars)
+
+                    model_output = model_output.outputs
+
+                    if 'loss' in model_output:
+                        tower_losses.append(model_output['loss'])
+
+                elif 'loss' in model_output:
                     if not only_test:
                         grads_and_vars = utils.compute_gradients(
                             model_output['loss'], self.optimizer)
-
-                        # 对抗训练
-                        if use_fgm:
-                            grads_and_vars = utils.fgm(
-                                model_fn, inputs, model_output['loss'], grads_and_vars=grads_and_vars,
-                                optimizer=self.optimizer, layer_name=layer_name
-                            )
 
                         tower_grads_and_vars.append(grads_and_vars)
                     tower_losses.append(model_output['loss'])
@@ -691,7 +733,7 @@ class Trainer(BaseTrainer):
     def evaluate(
             self,
             eval_dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
-            eval_steps=None, metric_fn=None,
+            eval_steps=0, metric_fn=None,
             post_process_fn=None):
         if metric_fn is None and self.metric_fn is None:
             raise ValueError("Please pass in the evaluation function (metric_fn)!")
@@ -708,7 +750,7 @@ class Trainer(BaseTrainer):
 
     def train(self,
               train_dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
-              train_steps=None,
+              train_steps=0,
               output_dir=None,
               evaluate_during_training=False,
               metric_fn=None,
@@ -718,11 +760,12 @@ class Trainer(BaseTrainer):
               greater_is_better=True,
               metric_for_best_model=None,
               eval_dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
-              eval_steps=None):
+              eval_steps=0):
         self.check_compile()
         self.check_init()
         self.check_dataset_and_steps('train', train_dataset, train_steps)
-        self.check_dataset_and_steps('dev', eval_dataset, eval_steps)
+        if eval_dataset is not None:
+            self.check_dataset_and_steps('dev', eval_dataset, eval_steps)
         if evaluate_during_training:
             if metric_fn is None and self.metric_fn is None:
                 raise ValueError("Please pass in the evaluation function (metric_fn)!")

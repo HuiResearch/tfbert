@@ -72,6 +72,9 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 开启混合精度比较慢，base版本模型的话需要一两分钟，但是开启后越到后边越快，训练步数少的话可以只开启xla就行了，如果多的话
 最好xla和混合精度（混合精度前提是你的卡支持fp16）都打开。
 ## **更新记录**
+- 2021/5/9 增加fgm，pgd，freelb接口，代码见[adversarial.py](tfbert/adversarial.py),
+  使用方式，在trainer的build_model中传入adversarial_type即可，这两天没GPU和相应数据集，所以功能还没测试。
+
 - 2021/4/18 花了一天时间重整Trainer，新增一个Dataset类。由于更新有点多，还没来得及写太多注释，敬请见谅。具体更新：
   1. trainer封装了train、evaluate、predict方法，具体见新版的使用例子。
   2. 写了一个Dataset类，支持简单的数据包装，也可以直接导出tf的dataset类型，具体[dataset.py](tfbert/data/dataset.py). 
