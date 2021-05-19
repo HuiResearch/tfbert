@@ -43,8 +43,8 @@ from tfbert import BertTokenizer, BertConfig
 config = BertConfig.from_pretrained('config_path')
 tokenizer = BertTokenizer.from_pretrained('vocab_path', do_lower_case=True)
 
-inputs = tokenizer.encode(
-'测试样例', text_pair=None, max_length=128, pad_to_max_length=True, add_special_tokens=True)
+inputs = tokenizer.encode_plus(
+'测试样例', text_pair=None, max_length=128, padding="max_length", add_special_tokens=True)
 
 config.save_pretrained("save_path")
 tokenizer.save_pretrained("save_path")
@@ -72,6 +72,9 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 开启混合精度比较慢，base版本模型的话需要一两分钟，但是开启后越到后边越快，训练步数少的话可以只开启xla就行了，如果多的话
 最好xla和混合精度（混合精度前提是你的卡支持fp16）都打开。
 ## **更新记录**
+- 2021/5/19 增加机器阅读理解示例代码，以dureader2021比赛数据为例，应该兼容大部分squad格式的数据。
+  同时更新tokenizer代码，贴合transformers使用接口，大部分直接整合的transformers的tokenizer
+
 - 2021/5/9 增加fgm，pgd，freelb接口，代码见[adversarial.py](tfbert/adversarial.py),
   使用方式，在trainer的build_model中传入adversarial_type即可，这两天没GPU和相应数据集，所以功能还没测试。
 
