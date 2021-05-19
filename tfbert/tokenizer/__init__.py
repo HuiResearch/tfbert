@@ -2,7 +2,7 @@
 # @FileName  :__init__.py.py
 # @Time      :2021/1/31 15:17
 # @Author    :huanghui
-from .base import (
+from .tokenization_base import (
     PTMTokenizer, BasicTokenizer, WordpieceTokenizer)
 from .bert import BertTokenizer
 from .albert import ALBertTokenizer

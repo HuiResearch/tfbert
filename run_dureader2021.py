@@ -1,16 +1,20 @@
-# -*- coding:utf-8 -*-
-# @FileName  :run_ner.py
-# @Time      :2021/2/8 13:44
-# @Author    :huanghui
+# -*- coding: UTF-8 -*-
+__author__ = 'huanghui'
+__date__ = '2021/5/17 23:23'
+__project__ = 'tfbert'
+
+import os
+import json
+import argparse
 import tensorflow.compat.v1 as tf
 from tfbert import (
-    Trainer, Dataset,
-    TokenClassification,
-    CONFIGS, TOKENIZERS, devices, set_seed)
-from tfbert.data.ner import convert_examples_to_features, InputExample
-from tfbert.metric.ner import ner_metric
-import os
-import argparse
+    Dataset, set_seed, QuestionAnswering,
+    CONFIGS, TOKENIZERS, devices, Trainer)
+from tfbert.data.mrc import (
+    convert_examples_to_features, MrcProcessor,
+    compute_predictions_logits, SquadResult, SquadExample, SquadFeatures)
+from tfbert.metric.mrc import metric
+from typing import Dict, List
 
 
 def create_args():
@@ -24,24 +28,59 @@ def create_args():
     parser.add_argument('--config_path', default=None, type=str, help="若配置文件名不是默认的，可在这里输入")
     parser.add_argument('--vocab_path', default=None, type=str, help="若词典文件名不是默认的，可在这里输入")
     parser.add_argument('--pretrained_checkpoint_path', default=None, type=str, help="若模型文件名不是默认的，可在这里输入")
-    parser.add_argument('--output_dir', default='output/ner', type=str, help="")
-    parser.add_argument('--export_dir', default='output/ner/pb', type=str, help="")
+    parser.add_argument('--output_dir', default='output/classification', type=str, help="")
+    parser.add_argument('--export_dir', default='output/classification/pb', type=str, help="")
 
-    parser.add_argument('--labels', default='O,B-PER,I-PER,B-ORG,I-ORG,B-LOC,I-LOC', type=str, help="文本分类标签")
-    parser.add_argument('--train_file', default='data/ner/train.txt', type=str, help="")
-    parser.add_argument('--dev_file', default='data/ner/dev.txt', type=str, help="")
-    parser.add_argument('--test_file', default='data/ner/test.txt', type=str, help="")
+    parser.add_argument('--train_file', default='data/dureader2021/train.json', type=str, help="")
+    parser.add_argument('--dev_file', default='data/dureader2021/dev.json', type=str, help="")
+    parser.add_argument('--test_file', default='data/dureader2021/test1.json', type=str, help="")
 
-    parser.add_argument("--num_train_epochs", default=3, type=int, help="训练轮次")
-    parser.add_argument("--max_seq_length", default=180, type=int, help="最大句子长度")
-    parser.add_argument("--batch_size", default=16, type=int, help="训练批次")
+    parser.add_argument("--num_train_epochs", default=2, type=int, help="训练轮次")
+    parser.add_argument("--batch_size", default=8, type=int, help="训练批次")
     parser.add_argument("--gradient_accumulation_steps", default=1, type=int, help="梯度累积")
     parser.add_argument("--learning_rate", default=2e-5, type=float, help="学习率")
     parser.add_argument("--warmup_proportion", default=0.1, type=float,
                         help="Proportion of training to perform linear learning rate warmup for.")
     parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay if we apply some.")
-    parser.add_argument("--add_crf", action="store_true", help="是否增加crf层.")
 
+    parser.add_argument(
+        "--version_2_with_negative",
+        action="store_true",
+        help="If true, the SQuAD examples contain some that do not have an answer.",
+    )
+    parser.add_argument(
+        "--null_score_diff_threshold",
+        type=float,
+        default=0.0,
+        help="If null_score - best_non_null is greater than the threshold predict null.",
+    )
+    parser.add_argument("--max_seq_length", default=384, type=int, help="最大句子长度")
+    parser.add_argument(
+        "--doc_stride",
+        default=128,
+        type=int,
+        help="When splitting up a long document into chunks, how much stride to take between chunks.",
+    )
+    parser.add_argument(
+        "--max_query_length",
+        default=32,
+        type=int,
+        help="The maximum number of tokens for the question. Questions longer than this will "
+             "be truncated to this length.",
+    )
+    parser.add_argument(
+        "--n_best_size",
+        default=10,
+        type=int,
+        help="The total number of n-best predictions to generate in the nbest_predictions.json output file.",
+    )
+    parser.add_argument(
+        "--max_answer_length",
+        default=384,
+        type=int,
+        help="The maximum length of an answer that can be generated. This is needed because the start "
+             "and end predictions are not conditioned on one another.",
+    )
     parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
     parser.add_argument("--do_eval", action="store_true", help="Whether to run eval on the dev set.")
     parser.add_argument("--do_predict", action="store_true", help="Whether to run test on the test set.")
@@ -51,7 +90,7 @@ def create_args():
     parser.add_argument("--logging_steps", default=1000, type=int, help="训练时每隔几步验证一次")
     parser.add_argument("--saving_steps", default=1000, type=int, help="训练时每隔几步保存一次")
     parser.add_argument("--random_seed", default=42, type=int, help="随机种子")
-    parser.add_argument("--threads", default=8, type=int, help="数据处理进程数")
+    parser.add_argument("--threads", default=1, type=int, help="数据处理进程数")
     parser.add_argument("--max_checkpoints", default=1, type=int, help="模型保存最大数量，默认只保存一个")
     parser.add_argument("--single_device", action="store_true", help="是否只使用一个device，默认使用所有的device训练")
     parser.add_argument("--use_xla", action="store_true", help="是否使用XLA加速")
@@ -66,71 +105,46 @@ def create_args():
     if not args.single_device:
         args.batch_size = args.batch_size * len(devices())
 
-    args.labels = args.labels.split(',')
     return args
 
 
-def create_examples(filename):
-    examples = []
-    words = []
-    tags = []
-    with open(filename, 'r', encoding='utf-8') as reader:
-        for line in reader:
-            line = line.strip()
-            if line:
-                word, tag = line.split('\t')
-                words.append(word)
-                tags.append(tag)
-
-            elif words and tags:
-                examples.append(
-                    InputExample(
-                        guid=str(len(examples)),
-                        words=words,
-                        tags=tags
-                    )
-                )
-                words = []
-                tags = []
-    return examples
-
-
 def create_dataset(set_type, tokenizer, args, return_examples=False):
-    filename_map = {
-        'train': args.train_file, 'dev': args.dev_file, 'test': args.test_file
-    }
-    examples = create_examples(filename_map[set_type])
+    processor = MrcProcessor()
+    if set_type == 'train':
+        examples = processor.get_train_examples(args.train_file)
+    elif set_type == 'dev':
+        examples = processor.get_dev_examples(args.dev_file)
+    else:
+        examples = processor.get_test_examples(args.test_file)
+
     features = convert_examples_to_features(
-        examples, tokenizer, args.max_seq_length, args.labels, set_type,
-        pad_token_label_id=0,
+        examples, tokenizer,
+        args.max_seq_length,
+        args.doc_stride,
+        args.max_query_length,
+        set_type=set_type,
         threads=args.threads
     )
-
     dataset = Dataset(features,
                       is_training=bool(set_type == 'train'),
                       batch_size=args.batch_size,
                       drop_last=bool(set_type == 'train'),
                       buffer_size=len(features),
                       max_length=args.max_seq_length)
-    dataset.format_as(['input_ids', 'attention_mask', 'token_type_ids', 'label_ids'])
-    if not return_examples:
-        return dataset
-    return dataset, examples, features
+    dataset.format_as(['input_ids', 'attention_mask', 'token_type_ids', 'start_position', 'end_position'])
+    if return_examples:
+        return dataset, examples, features
+    return dataset
 
 
 def get_model_fn(config, args):
     def model_fn(inputs, is_training):
-        model = TokenClassification(
+        model = QuestionAnswering(
             model_type=args.model_type, config=config,
-            num_classes=len(args.labels), is_training=is_training,
-            add_crf=args.add_crf,
+            is_training=is_training,
             **inputs)
 
-        outputs = {
-            'outputs': {
-                'predictions': model.predictions,
-                'label_ids': inputs['label_ids'],
-                'attention_mask': inputs['attention_mask']}}
+        outputs = {'outputs': {'start_logits': model.start_logits, 'end_logits': model.end_logits}}
         if model.loss is not None:
             loss = model.loss / args.gradient_accumulation_steps
             outputs['loss'] = loss
@@ -144,59 +158,52 @@ def get_serving_fn(config, args):
         input_ids = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='input_ids')
         attention_mask = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='attention_mask')
         token_type_ids = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='token_type_ids')
-        model = TokenClassification(
+        model = QuestionAnswering(
             model_type=args.model_type, config=config,
-            num_classes=len(args.labels), is_training=False,
+            is_training=False,
             input_ids=input_ids,
             attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            add_crf=args.add_crf
+            token_type_ids=token_type_ids
         )
         inputs = {'input_ids': input_ids, 'attention_mask': attention_mask, 'token_type_ids': token_type_ids}
-        outputs = {'predictions': model.predictions}
+        outputs = {'start_logits': model.start_logits, 'end_logits': model.end_logits}
         return inputs, outputs
 
     return serving_fn
 
 
-def get_post_process_fn(labels):
-    def post_process_fn(outputs):
-        id2label = dict(zip(range(len(labels)), labels))
-
-        def convert_to_label(ids):
-            return list(map(lambda x: id2label[x], ids))
-
-        y_pred, y_true = [], []
-        for prediction, output_label_id, mask in zip(
-                outputs['predictions'], outputs['label_ids'], outputs['attention_mask']):
-            pred_ids = []
-            true_ids = []
-            for p, t, m in zip(prediction, output_label_id, mask):
-                # 去除填充位置
-                if m == 1:
-                    pred_ids.append(p)
-                    true_ids.append(t)
-                else:
-                    break
-            pred_ids = pred_ids[1: -1]  # 去掉cls、sep位置
-            true_ids = true_ids[1: -1]
-            y_pred.append(convert_to_label(pred_ids))
-            y_true.append(convert_to_label(true_ids))
-        return {'predict_tags': y_pred, 'source_tags': y_true}
+def get_post_process_fn(args, tokenizer, examples: List[SquadExample], features: List[SquadFeatures]):
+    def post_process_fn(outputs: Dict):
+        results = []
+        for i in range(len(features)):
+            start_logits = outputs['start_logits'][i].tolist()
+            end_logits = outputs['end_logits'][i].tolist()
+            unique_id = features[i].unique_id
+            results.append(
+                SquadResult(unique_id=unique_id, start_logits=start_logits, end_logits=end_logits)
+            )
+        predictions, _, _ = compute_predictions_logits(
+            all_examples=examples, all_features=features, all_results=results,
+            n_best_size=args.n_best_size, max_answer_length=args.max_answer_length,
+            do_lower_case=True, output_prediction_file=None, output_nbest_file=None,
+            output_null_log_odds_file=None, verbose_logging=False,
+            version_2_with_negative=args.version_2_with_negative,
+            null_score_diff_threshold=args.null_score_diff_threshold,
+            tokenizer=tokenizer,
+            empty_answer='no answer'
+        )
+        return {'predictions': predictions}
 
     return post_process_fn
 
 
-def get_metric_fn():
+def get_metric_fn(gold_file):
     def metric_fn(outputs):
-        result = ner_metric(
-            y_true=outputs['source_tags'], y_pred=outputs['predict_tags'], dict_report=True
+        result = metric(
+            predictions=outputs['predictions'], gold_file=gold_file, dict_report=True
         )
-        return {
-            'macro-f1': result[1]['macro avg']['f1-score'],
-            'micro-f1': result[1]['micro avg']['f1-score'],
-            'report': result[0]
-        }
+        # 这里的result元组，第一个为字符串类型的评估结果，第二个为字典结果
+        return result[1]
 
     return metric_fn
 
@@ -216,20 +223,17 @@ def main():
         train_dataset = create_dataset('train', tokenizer, args)
 
     if args.do_eval:
-        dev_dataset = create_dataset('dev', tokenizer, args)
+        dev_dataset, dev_examples, dev_features = create_dataset('dev', tokenizer, args, return_examples=True)
 
     if args.do_predict:
         predict_dataset, predict_examples, predict_features = create_dataset(
             'test', tokenizer, args, return_examples=True)
-
     output_types, output_shapes = (train_dataset or dev_dataset or predict_dataset).output_types_and_shapes()
     trainer = Trainer(
         train_dataset=train_dataset,
         eval_dataset=dev_dataset,
         output_types=output_types,
         output_shapes=output_shapes,
-        metric_fn=get_metric_fn(),
-        post_process_fn=get_post_process_fn(args.labels),
         use_xla=args.use_xla,
         optimizer_type=args.optimizer_type,
         learning_rate=args.learning_rate,
@@ -248,35 +252,43 @@ def main():
         trainer.from_pretrained(
             args.model_dir if args.pretrained_checkpoint_path is None else args.pretrained_checkpoint_path)
 
+        # 训练过程中结果后处理需要传入的是验证examples
         trainer.train(
             output_dir=args.output_dir,
             evaluate_during_training=args.evaluate_during_training,
+            metric_fn=get_metric_fn(args.dev_file),
+            post_process_fn=get_post_process_fn(args, tokenizer, dev_examples,
+                                                dev_features) if args.evaluate_during_training else None,
             logging_steps=args.logging_steps,
             saving_steps=args.saving_steps,
-            greater_is_better=True, metric_for_best_model='macro-f1')
+            greater_is_better=True,
+            metric_for_best_model='f1')
         config.save_pretrained(args.output_dir)
         tokenizer.save_pretrained(args.output_dir)
 
     if args.do_eval and dev_dataset is not None:
         trainer.from_pretrained(args.output_dir)
-        eval_outputs = trainer.evaluate()
-        print(eval_outputs['report'])
+        # 验证过程中结果后处理需要传入的是验证examples
+        eval_outputs = trainer.evaluate(
+            eval_dataset=dev_dataset,
+            eval_steps=0,
+            metric_fn=get_metric_fn(args.dev_file),  # 标准文件用验证集文件
+            post_process_fn=get_post_process_fn(args, tokenizer, dev_examples,
+                                                dev_features))
+        tf.logging.info("***** eval results *****")
+        print(eval_outputs)
 
     if args.do_predict and predict_dataset is not None:
         trainer.from_pretrained(args.output_dir)
-        outputs = trainer.predict('test', dataset=predict_dataset)
-        with open(
-                os.path.join(args.output_dir, 'prediction.txt'), 'w', encoding='utf-8'
-        ) as f:
-            for example, feature, pred_tags in zip(
-                    predict_examples, predict_features,
-                    outputs['predict_tags']):
-                tags = ['O'] * len(example.words)
-                for i in range(len(pred_tags)):
-                    tags[feature.tok_to_orig_index[i]] = pred_tags[i]
-                for w, t in zip(example.words, tags):
-                    f.write(f"{w}\t{t}\n")
+        # 预测过程中结果后处理需要传入的是测试集examples
+        outputs = trainer.predict(
+            'test', dataset=predict_dataset,
+            post_process_fn=get_post_process_fn(args, tokenizer, predict_examples, predict_features))
 
+        # 去除自定义的post process fn的结果，存进json文件
+        open(os.path.join(args.output_dir, 'predictions.json'), 'w', encoding='utf-8').write(
+            json.dumps(outputs['predictions'], ensure_ascii=False, indent=4)
+        )
     if args.do_export:
         trainer.export(
             get_serving_fn(config, args),

@@ -15,12 +15,25 @@ class SequenceClassification:
                  num_classes,
                  is_training,
                  input_ids,
-                 input_mask=None,
+                 attention_mask=None,
                  token_type_ids=None,
                  label_ids=None,
                  dropout_prob=0.1,
                  compute_type=tf.float32
                  ):
+        """
+        文本分类基本模型
+        :param model_type: 预训练模型类型
+        :param config: 配置config
+        :param num_classes: 分类类别数
+        :param is_training: bool，是否训练，影响dropout设置
+        :param input_ids:
+        :param attention_mask:
+        :param token_type_ids:
+        :param label_ids:
+        :param dropout_prob:
+        :param compute_type:
+        """
         model_type = model_type.lower()
         if model_type not in MODELS:
             raise ValueError("Unsupported model option: {}, "
@@ -30,7 +43,7 @@ class SequenceClassification:
             config,
             is_training=is_training,
             input_ids=input_ids,
-            input_mask=input_mask,
+            attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             compute_type=compute_type
         )
@@ -56,12 +69,26 @@ class TokenClassification:
                  num_classes,
                  is_training,
                  input_ids,
-                 input_mask=None,
+                 attention_mask=None,
                  token_type_ids=None,
                  label_ids=None,
                  dropout_prob=0.1,
                  add_crf=False,
                  compute_type=tf.float32):
+        """
+        命名实体识别系列模型
+        :param model_type: 预训练模型类型
+        :param config: 配置config
+        :param num_classes: token分类类别数
+        :param is_training: bool，是否训练，影响dropout设置
+        :param input_ids:
+        :param attention_mask:
+        :param token_type_ids:
+        :param label_ids:
+        :param dropout_prob:
+        :param add_crf: 是否增加crf层
+        :param compute_type:
+        """
         model_type = model_type.lower()
         if model_type not in MODELS:
             raise ValueError("Unsupported model option: {}, "
@@ -71,7 +98,7 @@ class TokenClassification:
             config,
             is_training=is_training,
             input_ids=input_ids,
-            input_mask=input_mask,
+            attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             compute_type=compute_type
         )
@@ -113,12 +140,25 @@ class MultiLabelClassification:
                  num_classes,
                  is_training,
                  input_ids,
-                 input_mask=None,
+                 attention_mask=None,
                  token_type_ids=None,
                  label_ids=None,
                  dropout_prob=0.1,
                  compute_type=tf.float32
                  ):
+        """
+        多标签分类基本模型
+        :param model_type: 预训练模型类型
+        :param config: 配置config
+        :param num_classes: 分类类别数
+        :param is_training: bool，是否训练，影响dropout设置
+        :param input_ids:
+        :param attention_mask:
+        :param token_type_ids:
+        :param label_ids:
+        :param dropout_prob:
+        :param compute_type:
+        """
         model_type = model_type.lower()
         if model_type not in MODELS:
             raise ValueError("Unsupported model option: {}, "
@@ -128,7 +168,7 @@ class MultiLabelClassification:
             config,
             is_training=is_training,
             input_ids=input_ids,
-            input_mask=input_mask,
+            attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             compute_type=compute_type
         )
@@ -149,20 +189,31 @@ class MultiLabelClassification:
                 self.loss = tf.reduce_mean(per_example_loss)
 
 
-class MaskedLM:
-    def __init__(
-            self,
-            model_type,
-            config,
-            is_training,
-            input_ids,
-            input_mask=None,
-            token_type_ids=None,
-            masked_lm_ids=None,
-            masked_lm_weights=None,
-            masked_lm_positions=None,
-            compute_type=tf.float32
-    ):
+class QuestionAnswering:
+    def __init__(self,
+                 model_type,
+                 config,
+                 is_training,
+                 input_ids,
+                 attention_mask=None,
+                 token_type_ids=None,
+                 start_position=None,
+                 end_position=None,
+                 dropout_prob=0.1,
+                 compute_type=tf.float32):
+        """
+        阅读理解基本模型
+        :param model_type: 预训练模型类型
+        :param config: 配置config
+        :param is_training: bool，是否训练，影响dropout设置
+        :param input_ids:
+        :param attention_mask:
+        :param token_type_ids:
+        :param start_position:
+        :param end_position:
+        :param dropout_prob:
+        :param compute_type:
+        """
         model_type = model_type.lower()
         if model_type not in MODELS:
             raise ValueError("Unsupported model option: {}, "
@@ -172,7 +223,68 @@ class MaskedLM:
             config,
             is_training=is_training,
             input_ids=input_ids,
-            input_mask=input_mask,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            compute_type=compute_type
+        )
+        sequence_output = model.get_sequence_output()
+        with tf.variable_scope("qa_outputs"):
+            if is_training:
+                sequence_output = model_utils.dropout(sequence_output,
+                                                      dropout_prob=dropout_prob)
+            logits = tf.layers.dense(
+                sequence_output,
+                2,
+                kernel_initializer=create_initializer(config.initializer_range)
+            )
+            logits = tf.transpose(logits, [2, 0, 1])
+            unstacked_logits = tf.unstack(logits, axis=0)
+
+            self.start_logits, self.end_logits = unstacked_logits[:2]
+            if start_position is not None and end_position is not None:
+                seq_length = model_utils.get_shape_list(input_ids)[1]
+                start_loss = loss.cross_entropy_loss(self.start_logits, start_position, seq_length)
+                end_loss = loss.cross_entropy_loss(self.end_logits, end_position, seq_length)
+                self.loss = (start_loss + end_loss) / 2.0
+
+
+class MaskedLM:
+    def __init__(
+            self,
+            model_type,
+            config,
+            is_training,
+            input_ids,
+            attention_mask=None,
+            token_type_ids=None,
+            masked_lm_ids=None,
+            masked_lm_weights=None,
+            masked_lm_positions=None,
+            compute_type=tf.float32
+    ):
+        """
+        mask 任务模型
+        :param model_type: 预训练模型类型
+        :param config: 配置config
+        :param is_training: bool，是否训练，影响dropout设置
+        :param input_ids:
+        :param attention_mask:
+        :param token_type_ids:
+        :param masked_lm_ids:
+        :param masked_lm_weights:
+        :param masked_lm_positions:
+        :param compute_type:
+        """
+        model_type = model_type.lower()
+        if model_type not in MODELS:
+            raise ValueError("Unsupported model option: {}, "
+                             "you can choose one of {}".format(model_type, "、".join(MODELS.keys())))
+
+        model = MODELS[model_type](
+            config,
+            is_training=is_training,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             compute_type=compute_type
         )
@@ -194,7 +306,7 @@ class PretrainingLM:
             config,
             is_training,
             input_ids,
-            input_mask=None,
+            attention_mask=None,
             token_type_ids=None,
             masked_lm_ids=None,
             masked_lm_weights=None,
@@ -211,7 +323,7 @@ class PretrainingLM:
             config,
             is_training=is_training,
             input_ids=input_ids,
-            input_mask=input_mask,
+            attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             compute_type=compute_type
         )

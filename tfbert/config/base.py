@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @author: huanghui
-@file: base.py
+@file: tokenization_base.py
 @date: 2020/09/08
 """
 import os

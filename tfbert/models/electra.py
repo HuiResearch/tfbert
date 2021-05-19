@@ -14,7 +14,7 @@ class ElectraModel(BaseModel):
             config,
             is_training,
             input_ids,
-            input_mask=None,
+            attention_mask=None,
             token_type_ids=None,
             scope=None,
             reuse=False,
@@ -26,8 +26,8 @@ class ElectraModel(BaseModel):
         batch_size = input_shape[0]
         seq_length = input_shape[1]
 
-        if input_mask is None:
-            input_mask = tf.ones(shape=[batch_size, seq_length], dtype=tf.int32)
+        if attention_mask is None:
+            attention_mask = tf.ones(shape=[batch_size, seq_length], dtype=tf.int32)
 
         if token_type_ids is None:
             token_type_ids = tf.zeros(shape=[batch_size, seq_length], dtype=tf.int32)
@@ -51,7 +51,7 @@ class ElectraModel(BaseModel):
 
             with tf.variable_scope("encoder"):
                 attention_mask = model_utils.create_bert_mask(
-                    input_ids, input_mask)
+                    input_ids, attention_mask)
                 encoder_outputs = bert_encoder(
                     config=self.config,
                     input_tensor=tf.saturate_cast(self.embedding_output, compute_type),

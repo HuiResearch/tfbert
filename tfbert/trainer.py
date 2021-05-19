@@ -280,16 +280,16 @@ class BaseTrainer:
         def get_serving_fn(config, args):
             def serving_fn():
                 input_ids = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='input_ids')
-                input_mask = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='input_mask')
+                attention_mask = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='attention_mask')
                 token_type_ids = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='token_type_ids')
                 model = SequenceClassification(
                     model_type=args.model_type, config=config,
                     num_classes=len(args.labels), is_training=False,
                     input_ids=input_ids,
-                    input_mask=input_mask,
+                    attention_mask=attention_mask,
                     token_type_ids=token_type_ids
                 )
-                inputs = {'input_ids': input_ids, 'input_mask': input_mask, 'token_type_ids': token_type_ids}
+                inputs = {'input_ids': input_ids, 'attention_mask': attention_mask, 'token_type_ids': token_type_ids}
                 outputs = {'logits': model.logits}
                 return inputs, outputs
             return serving_fn  # 返回这个就是serving fn

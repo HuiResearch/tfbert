@@ -6,7 +6,7 @@
 """
 import tensorflow.compat.v1 as tf
 from . import BaseClass, process_dataset
-from ..tokenizer.base import convert_to_unicode
+from ..tokenizer.tokenization_base import convert_to_unicode
 import random
 import numpy as np
 import collections
@@ -26,14 +26,14 @@ def return_types_and_shapes(for_trainer, only_mlm=False):
         label_shape = tf.TensorShape([])
 
     output_types = {"input_ids": tf.int32,
-                    "input_mask": tf.int32,
+                    "attention_mask": tf.int32,
                     "token_type_ids": tf.int32,
                     'masked_lm_positions': tf.int32,
                     'masked_lm_ids': tf.int32,
                     'masked_lm_weights': tf.float32,
                     'next_sentence_labels': tf.int32}
     output_shapes = {"input_ids": shape,
-                     "input_mask": shape,
+                     "attention_mask": shape,
                      "token_type_ids": shape,
                      'masked_lm_positions': shape,
                      'masked_lm_ids': shape,
@@ -65,7 +65,7 @@ class InputFeature(BaseClass):
     def __init__(self,
                  guid,
                  input_ids,
-                 input_mask=None,
+                 attention_mask=None,
                  token_type_ids=None,
                  masked_lm_positions=None,
                  masked_lm_ids=None,
@@ -73,7 +73,7 @@ class InputFeature(BaseClass):
                  next_sentence_labels=None):
         self.guid = guid
         self.input_ids = input_ids
-        self.input_mask = input_mask
+        self.attention_mask = attention_mask
         self.token_type_ids = token_type_ids
         self.masked_lm_positions = masked_lm_positions
         self.masked_lm_ids = masked_lm_ids
@@ -90,7 +90,7 @@ def create_dataset_by_gen(
         for ex in features:
             feature = {
                 "input_ids": ex.input_ids,
-                "input_mask": ex.input_mask,
+                "attention_mask": ex.attention_mask,
                 "token_type_ids": ex.token_type_ids,
                 'masked_lm_positions': ex.masked_lm_positions,
                 'masked_lm_ids': ex.masked_lm_ids,
@@ -131,9 +131,9 @@ def create_dataset_from_slices(
             tf.constant(
                 [f.input_ids for f in features],
                 dtype=tf.int32),
-        "input_mask":
+        "attention_mask":
             tf.constant(
-                [f.input_mask for f in features],
+                [f.attention_mask for f in features],
                 dtype=tf.int32),
         "token_type_ids":
             tf.constant(
@@ -156,17 +156,17 @@ def convert_examples_to_features(examples, tokenizer, max_length, max_prediction
     features = []
     for (ex_id, example) in enumerate(examples):
         input_ids = tokenizer.convert_tokens_to_ids(example.tokens)
-        input_mask = [1] * len(input_ids)
+        attention_mask = [1] * len(input_ids)
         token_type_ids = list(example.token_type_ids)
 
         assert len(input_ids) <= max_length
 
         while len(input_ids) < max_length:
             input_ids.append(0)
-            input_mask.append(0)
+            attention_mask.append(0)
             token_type_ids.append(0)
         assert len(input_ids) == max_length
-        assert len(input_mask) == max_length
+        assert len(attention_mask) == max_length
         assert len(token_type_ids) == max_length
 
         masked_lm_positions = list(example.masked_lm_positions)
@@ -184,7 +184,7 @@ def convert_examples_to_features(examples, tokenizer, max_length, max_prediction
         feature = InputFeature(
             guid=ex_id,
             input_ids=input_ids,
-            input_mask=input_mask,
+            attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             masked_lm_positions=masked_lm_positions,
             masked_lm_ids=masked_lm_ids,

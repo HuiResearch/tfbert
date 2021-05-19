@@ -4,7 +4,7 @@
 @file: wobert.py
 @date: 2020/09/19
 """
-from .base import convert_to_unicode
+from .tokenization_base import convert_to_unicode
 from .bert import BertTokenizer
 
 

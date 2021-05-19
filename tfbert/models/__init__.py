@@ -26,5 +26,6 @@ MODELS = {
 
 from .for_task import (
     SequenceClassification, TokenClassification,
-    MultiLabelClassification, MaskedLM, PretrainingLM)
+    MultiLabelClassification, MaskedLM, PretrainingLM,
+    QuestionAnswering)
 

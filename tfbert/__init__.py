@@ -13,7 +13,8 @@ from .models import (
     BertModel, ALBertModel, ElectraModel,
     NezhaModel, WoBertModel,
     SequenceClassification, MODELS, crf,
-    TokenClassification, MultiLabelClassification, MaskedLM, PretrainingLM)
+    TokenClassification, MultiLabelClassification,
+    MaskedLM, PretrainingLM, QuestionAnswering)
 from .config import (
     BaseConfig, BertConfig, ALBertConfig,
     ElectraConfig, NeZhaConfig, WoBertConfig, CONFIGS)

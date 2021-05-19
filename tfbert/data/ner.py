@@ -19,11 +19,11 @@ def return_types_and_shapes(for_trainer):
         label_shape = tf.TensorShape([None])
 
     output_types = {"input_ids": tf.int32,
-                    "input_mask": tf.int32,
+                    "attention_mask": tf.int32,
                     "token_type_ids": tf.int32,
                     'label_ids': tf.int32}
     output_shapes = {"input_ids": shape,
-                     "input_mask": shape,
+                     "attention_mask": shape,
                      "token_type_ids": shape,
                      'label_ids': label_shape}
 
@@ -43,14 +43,14 @@ class InputFeature(BaseClass):
     def __init__(self,
                  guid,
                  input_ids: List[int],
-                 input_mask: List[int] = None,
+                 attention_mask: List[int] = None,
                  token_type_ids: List[int] = None,
                  label_ids: List[int] = None,
                  tok_to_orig_index: List[int] = None,
                  ex_id=None):
         self.guid = guid
         self.input_ids = input_ids
-        self.input_mask = input_mask
+        self.attention_mask = attention_mask
         self.token_type_ids = token_type_ids
         self.label_ids = label_ids
         self.ex_id = ex_id
@@ -99,26 +99,26 @@ def convert_example_to_feature(
 
     input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
-    input_mask = [1] * len(input_ids)
+    attention_mask = [1] * len(input_ids)
 
     # Zero-pad up to the sequence length.
     padding_length = max_length - len(input_ids)
 
     input_ids += [tokenizer.pad_token_id] * padding_length
-    input_mask += [0] * padding_length
+    attention_mask += [0] * padding_length
     token_type_ids += [tokenizer.pad_token_type_id] * padding_length
     if has_label:
         label_ids += [pad_token_label_id] * padding_length
 
     assert len(input_ids) == max_length
-    assert len(input_mask) == max_length
+    assert len(attention_mask) == max_length
     assert len(token_type_ids) == max_length
     if has_label:
         assert len(label_ids) == max_length
 
     return InputFeature(
         guid=str(0),
-        input_ids=input_ids, input_mask=input_mask,
+        input_ids=input_ids, attention_mask=attention_mask,
         token_type_ids=token_type_ids,
         label_ids=label_ids if has_label else None,
         tok_to_orig_index=tok_to_orig_index
@@ -186,7 +186,7 @@ def create_dataset_by_gen(
         for ex in features:
             yield {
                 "input_ids": ex.input_ids,
-                "input_mask": ex.input_mask,
+                "attention_mask": ex.attention_mask,
                 "token_type_ids": ex.token_type_ids,
                 'label_ids': ex.label_ids,
             }
@@ -219,9 +219,9 @@ def create_dataset_from_slices(
             tf.constant(
                 [f.input_ids for f in features],
                 dtype=tf.int32),
-        "input_mask":
+        "attention_mask":
             tf.constant(
-                [f.input_mask for f in features],
+                [f.attention_mask for f in features],
                 dtype=tf.int32),
         "token_type_ids":
             tf.constant(

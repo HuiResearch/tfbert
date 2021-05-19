@@ -103,7 +103,7 @@ def create_dataset(set_type, tokenizer, args):
                       drop_last=bool(set_type == 'train'),
                       buffer_size=len(features),
                       max_length=args.max_seq_length)
-    dataset.format_as(['input_ids', 'input_mask', 'token_type_ids', 'label_ids'])
+    dataset.format_as(['input_ids', 'attention_mask', 'token_type_ids', 'label_ids'])
     return dataset
 
 
@@ -137,7 +137,7 @@ def get_model_fn(config, args):
 def get_serving_fn(config, args):
     def serving_fn():
         input_ids = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='input_ids')
-        input_mask = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='input_mask')
+        attention_mask = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='attention_mask')
         token_type_ids = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='token_type_ids')
         model = MultiLabelClassification(
             model_type=args.model_type,
@@ -145,10 +145,10 @@ def get_serving_fn(config, args):
             num_classes=len(args.labels),
             is_training=False,
             input_ids=input_ids,
-            input_mask=input_mask,
+            attention_mask=attention_mask,
             token_type_ids=token_type_ids
         )
-        inputs = {'input_ids': input_ids, 'input_mask': input_mask, 'token_type_ids': token_type_ids}
+        inputs = {'input_ids': input_ids, 'attention_mask': attention_mask, 'token_type_ids': token_type_ids}
         outputs = {'predictions': model.predictions}
         return inputs, outputs
 
