@@ -452,7 +452,7 @@ class Trainer(BaseTrainer):
                 output_types, output_shapes = (self.train_dataset or self.eval_dataset).output_types_and_shapes()
             else:
                 output_types, output_shapes = Dataset.get_output_types_and_shapes(
-                    (self.train_dataset or self.eval_dataset))
+                    (self.train_dataset or self.eval_dataset), use_none=True)
 
         self.num_train_epochs = num_train_epochs
         self.gradient_accumulation_steps = gradient_accumulation_steps
@@ -735,6 +735,14 @@ class Trainer(BaseTrainer):
             eval_dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
             eval_steps=0, metric_fn=None,
             post_process_fn=None):
+        """
+        验证接口
+        :param eval_dataset:
+        :param eval_steps: 验证一轮的步数
+        :param metric_fn: 评估调用方法，将接受post_process_fn的输出或者已定义的model fn的 outputs
+        :param post_process_fn: 对model fn输出的outputs后处理方法
+        :return:
+        """
         if metric_fn is None and self.metric_fn is None:
             raise ValueError("Please pass in the evaluation function (metric_fn)!")
         elif self.metric_fn is not None:
@@ -761,6 +769,22 @@ class Trainer(BaseTrainer):
               metric_for_best_model=None,
               eval_dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
               eval_steps=0):
+        """
+        训练接口
+        :param train_dataset:
+        :param train_steps: 这个是一轮的步数
+        :param output_dir:
+        :param evaluate_during_training:
+        :param metric_fn: 评估方法
+        :param post_process_fn: predict的outputs 后处理方法
+        :param logging_steps:
+        :param saving_steps:
+        :param greater_is_better: 是否验证结果高表示效果好
+        :param metric_for_best_model: 评估模型指标字段，也就是用metric fn返回字典结果中哪个结果筛选模型
+        :param eval_dataset:
+        :param eval_steps: 验证一轮的步数
+        :return:
+        """
         self.check_compile()
         self.check_init()
         self.check_dataset_and_steps('train', train_dataset, train_steps)

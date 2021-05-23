@@ -33,5 +33,7 @@ from .optimization import (
     lr_schedule, create_optimizer, create_train_op)
 from .data import (Dataset, collate_batch, sequence_padding,
                    single_example_to_features,
-                   multiple_convert_examples_to_features)
+                   multiple_convert_examples_to_features,
+                   compute_types, compute_shapes,
+                   process_dataset, compute_types_and_shapes_from_dataset)
 from .trainer import Trainer, SimplerTrainer

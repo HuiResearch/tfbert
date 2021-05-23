@@ -4,7 +4,7 @@ __date__ = '2021/4/16 22:51'
 __project__ = 'tfbert'
 
 import copy
-from . import BaseClass
+from . import BaseClass, compute_shapes, compute_types, compute_types_and_shapes_from_dataset
 import numpy as np
 from typing import List, Dict, Optional, Union
 import random
@@ -218,46 +218,6 @@ class Dataset:
     def restore_columns(self):
         self.columns = copy.deepcopy(self.back_columns)
 
-    @classmethod
-    def compute_types(cls, example):
-        def fn(values):
-            if isinstance(values, np.ndarray):
-                if values.dtype == np.dtype(float):
-                    return tf.float32
-                elif values.dtype == np.int64:
-                    return tf.int32  # 统一使用int32
-                elif values.dtype == np.int32:
-                    return tf.int32
-                else:
-                    raise ValueError(
-                        f"values={values} is an np.ndarray with items of dtype {values.dtype}, which cannot be supported"
-                    )
-            # 支持到二维矩阵。。。
-            elif (isinstance(values, list) and isinstance(values[0], float)) or isinstance(values, float):
-                return tf.float32
-            elif (isinstance(values, list) and isinstance(values[0], int)) or isinstance(values, int):
-                return tf.int32
-            elif (isinstance(values, list) and isinstance(values[0], str)) or isinstance(values, str):
-                return tf.string
-            else:
-                raise ValueError(f"values={values} has dtype {values.dtype}, which cannot be supported")
-
-        tf_types = {}
-        for k, v in example.items():
-            tf_types[k] = fn(v)
-        return tf_types
-
-    def compute_shapes(self, example):
-
-        def fn(array):
-            np_shape = np.shape(array)
-            return [None] * len(np_shape)
-
-        tf_shapes = {}
-        for k in self.columns:
-            tf_shapes[k] = fn(example[k])
-        return tf_shapes
-
     def process_dataset(self, dataset: tf.data.Dataset):
         if self.is_training:
             dataset = dataset.repeat()
@@ -281,10 +241,13 @@ class Dataset:
                     data[k] = self.features[k][i]
                 yield data
 
-        shapes = self.compute_shapes(self[0])
-        types = self.compute_types(self[0])
+        shapes = compute_shapes(self[0], self.columns)
+        types = compute_types(self[0], self.columns)
+        return self.dataset_from_generator(gen, types, shapes)
+
+    def dataset_from_generator(self, generator, types, shapes):
         dataset = tf.data.Dataset.from_generator(
-            gen,
+            generator,
             types,
             shapes
         )
@@ -296,7 +259,7 @@ class Dataset:
         :return:
         """
         dataset = {}
-        types = self.compute_types(self[0])
+        types = compute_types(self[0], self.columns)
         for k in self.columns:
             dataset[k] = tf.constant(self.features[k], dtype=types[k])
         dataset = tf.data.Dataset.from_tensor_slices(dataset)
@@ -309,17 +272,16 @@ class Dataset:
         return self.tf_slice_dataset()
 
     @classmethod
-    def get_output_types_and_shapes(cls, dataset: tf.data.Dataset):
+    def get_output_types_and_shapes(cls, dataset: tf.data.Dataset, use_none=False):
         """
-        根据 tf dataset，得到dataset的tensor shapes和types
+        根据 tf dataset，得到 dataset的 tensor shapes和 types
         :param dataset:
+        :param use_none: 是否将shapes全部设置为None，这样避免bs不统一
         :return:
         """
-        output_types = tf.data.get_output_types(dataset)
-        output_shapes = tf.data.get_output_shapes(dataset)
-        return output_types, output_shapes
+        return compute_types_and_shapes_from_dataset(dataset, use_none)
 
     def output_types_and_shapes(self):
-        shapes = self.compute_shapes(self.features)
-        types = self.compute_types(self[0])
+        shapes = compute_shapes(self.features, self.columns)
+        types = compute_types(self[0], self.columns)
         return types, shapes
