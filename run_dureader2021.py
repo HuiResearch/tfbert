@@ -13,7 +13,7 @@ from tfbert import (
 from tfbert.data.mrc import (
     convert_examples_to_features, MrcProcessor,
     compute_predictions_logits, SquadResult, SquadExample, SquadFeatures)
-from tfbert.metric.mrc import metric
+from tfbert.metric.dureader2021 import metric
 from typing import Dict, List
 
 
@@ -28,8 +28,8 @@ def create_args():
     parser.add_argument('--config_path', default=None, type=str, help="若配置文件名不是默认的，可在这里输入")
     parser.add_argument('--vocab_path', default=None, type=str, help="若词典文件名不是默认的，可在这里输入")
     parser.add_argument('--pretrained_checkpoint_path', default=None, type=str, help="若模型文件名不是默认的，可在这里输入")
-    parser.add_argument('--output_dir', default='output/classification', type=str, help="")
-    parser.add_argument('--export_dir', default='output/classification/pb', type=str, help="")
+    parser.add_argument('--output_dir', default='output/dureader2021', type=str, help="")
+    parser.add_argument('--export_dir', default='output/dureader2021/pb', type=str, help="")
 
     parser.add_argument('--train_file', default='data/dureader2021/train.json', type=str, help="")
     parser.add_argument('--dev_file', default='data/dureader2021/dev.json', type=str, help="")
@@ -262,7 +262,7 @@ def main():
             logging_steps=args.logging_steps,
             saving_steps=args.saving_steps,
             greater_is_better=True,
-            metric_for_best_model='f1')
+            metric_for_best_model='F1')
         config.save_pretrained(args.output_dir)
         tokenizer.save_pretrained(args.output_dir)
 

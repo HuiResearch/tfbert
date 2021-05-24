@@ -3,8 +3,11 @@
 # __date__ = '2021/5/16 22:16'
 # __project__ = 'tfbert'
 
+"""
+dureader2021 的评估函数
+"""
 from __future__ import print_function
-from typing import Union, Dict
+from collections import OrderedDict
 import io
 import json
 import six
@@ -111,35 +114,44 @@ def evaluate(ref_ans, pred_ans, verbose=False):
     em = 0
     total_count = 0
     skip_count = 0
-    datas = ref_ans['data'][0]["paragraphs"]
-    for document in datas:
-        para = document['context'].strip()
-        for qa in (document['qas']):
-            total_count += 1
-            query_id = qa['id']
-            query_text = qa['question'].strip()
-            answers = [a['text'] for a in qa['answers']]
-            try:
-                prediction = pred_ans[str(query_id)]
-            except:
-                skip_count += 1
-                if verbose:
-                    print("para: {}".format(para))
-                    print("query: {}".format(query_text))
-                    print("ref: {}".format('#'.join(answers)))
-                    print("Skipped")
-                    print('----------------------------')
-                continue
-            _f1 = calc_f1_score(answers, prediction)
-            f1 += _f1
-            em += calc_em_score(answers, prediction)
+    for query_id, sample in ref_ans.items():
+        total_count += 1
+        para = sample['para']
+        query_text = sample['question']
+        title = sample['title']
+        answers = sample['answers']
+        is_impossible = sample['is_impossible']
+        try:
+            prediction = pred_ans[str(query_id)]
+        except:
+            skip_count += 1
             if verbose:
                 print("para: {}".format(para))
                 print("query: {}".format(query_text))
                 print("ref: {}".format('#'.join(answers)))
-                print("cand: {}".format(prediction))
-                print("score: {}".format(_f1))
+                print("Skipped")
                 print('----------------------------')
+            continue
+        if is_impossible:
+            if prediction.lower() == 'no answer':
+                _f1 = 1.0
+                _em = 1.0
+            else:
+                _f1 = 0.0
+                _em = 0.0
+        else:
+            _f1 = calc_f1_score(answers, prediction)
+            _em = calc_em_score(answers, prediction)
+        f1 += _f1
+        em += _em
+        if verbose:
+            print("para: {}".format(para))
+            print("query: {}".format(query_text))
+            print("title: {}".format(title))
+            print("ref: {}".format('#'.join(answers)))
+            print("cand: {}".format(prediction))
+            print("score: {}".format(_f1))
+            print('----------------------------')
 
     f1_score = 100.0 * f1 / total_count
     em_score = 100.0 * em / total_count
@@ -173,7 +185,45 @@ def calc_em_score(answers, prediction):
     return em
 
 
-def metric(predictions: Union[str, Dict], gold_file: str, dict_report=False):
+def read_mrc_dataset(filename, tag=None):
+    dataset = OrderedDict()
+    with io.open(filename, encoding='utf-8') as fin:
+        mrc_dataset = json.load(fin)
+    for document in mrc_dataset['data']:
+        for paragraph in document['paragraphs']:
+            para = paragraph['context'].strip()
+            title = ''
+            if 'title' in paragraph:
+                title = paragraph['title']
+            for qa in (paragraph['qas']):
+                query_id = qa['id']
+                query_text = qa['question'].strip()
+                answers = [a['text'] for a in qa['answers']]
+                if tag is not None:
+                    if not qa['type'].startswith(tag):
+                        continue
+                is_impossible = False
+                if 'is_impossible' in qa:
+                    is_impossible = qa['is_impossible']
+                if is_impossible:
+                    answers = ['no answer']
+                dataset[query_id] = {
+                    'answers': answers,
+                    'question': query_text,
+                    'para': para,
+                    'is_impossible': is_impossible,
+                    'title': title
+                }
+    return dataset
+
+
+def read_model_prediction(filename):
+    with io.open(filename, encoding='utf-8') as fin:
+        model_prediction = json.load(fin)
+    return model_prediction
+
+
+def metric(predictions, gold_file: str, dict_report=False):
     """
     dureader使用的评估函数
     :param predictions: 预测结果（字典）或者预测文件地址
@@ -181,7 +231,7 @@ def metric(predictions: Union[str, Dict], gold_file: str, dict_report=False):
     :param dict_report: 是否返回字典形式结果
     :return:
     """
-    ref_ans = json.load(io.open(gold_file, encoding='utf-8'))
+    ref_ans = read_mrc_dataset(gold_file, tag=None)
     if isinstance(predictions, str):
         pred_ans = json.load(io.open(predictions, encoding='utf-8'))
     elif isinstance(predictions, dict):
@@ -190,8 +240,12 @@ def metric(predictions: Union[str, Dict], gold_file: str, dict_report=False):
         raise ValueError("Please input the file name or prediction result")
 
     F1, EM, TOTAL, SKIP = evaluate(ref_ans, pred_ans, False)
-    result = {'f1': F1, 'em': EM, 'total': TOTAL, 'skip': SKIP}
-    report = json.dumps(result, ensure_ascii=False, indent=4)
+    output_result = OrderedDict()
+    output_result['F1'] = F1
+    output_result['EM'] = EM
+    output_result['TOTAL'] = TOTAL
+    output_result['SKIP'] = SKIP
+    report = json.dumps(output_result, ensure_ascii=False, indent=4)
     if dict_report:
-        return report, result
+        return report, output_result
     return report
