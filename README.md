@@ -71,6 +71,18 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 
 开启混合精度比较慢，base版本模型的话需要一两分钟，但是开启后越到后边越快，训练步数少的话可以只开启xla就行了，如果多的话
 最好xla和混合精度（混合精度前提是你的卡支持fp16）都打开。
+
+## 可加载中文权重链接
+| 模型简称 | 下载链接 |
+| :------- | :--------- |
+| **`BERT wwm 系列`** | **[Chinese-BERT-wwm](https://github.com/ymcui/Chinese-BERT-wwm)**|
+| **`BERT-base, Chinese`<sup>Google</sup>** | [Google Cloud](https://storage.googleapis.com/bert_models/2018_11_03/chinese_L-12_H-768_A-12.zip) |
+| **`ALBERT-base, Chinese`<sup>Google</sup>** | [google-research/albert](https://github.com/google-research/albert) |
+| **`MacBERT, Chinese`**    | **[MacBERT](https://github.com/ymcui/MacBERT)**|
+| **`ELECTRA, Chinese`**    | **[Chinese-ELECTRA](https://github.com/ymcui/Chinese-ELECTRA)**|
+| **`ERNIE 1.0.1, Chinese`**    | **[百度网盘(xrku)](https://pan.baidu.com/s/13eRD6uVnr4xeUfYXk8XKIw)**|
+| **`ERNIE gram base, Chinese`**    | **[百度网盘(mfiq)](https://pan.baidu.com/s/10wP7fdfGIEZt9fSUiVEd7A)**|
+
 ## **更新记录**
 - 2021/5/19 增加机器阅读理解示例代码，以dureader2021比赛数据为例，应该兼容大部分squad格式的数据。
   同时更新tokenizer代码，贴合transformers使用接口，大部分直接整合的transformers的tokenizer
