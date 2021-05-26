@@ -9,7 +9,7 @@ import collections
 import numpy as np
 import argparse
 import tensorflow.compat.v1 as tf
-from tfbert import BertConfig, BertTokenizer
+from tfbert import BertConfig
 
 
 def build_params_map_to_pt(num_layers=12):
@@ -71,7 +71,6 @@ def convert_paddle_checkpoint_to_tf(
         paddle_weight_file, paddle_config_file, paddle_vocab_file, save_dir):
     params = paddle.load(paddle_weight_file)
     config = build_config(paddle_config_file)
-    tokenizer = BertTokenizer.from_pretrained(paddle_vocab_file)
     weight_map = build_params_map_to_pt(config.num_hidden_layers)
 
     var_map = (
@@ -113,7 +112,15 @@ def convert_paddle_checkpoint_to_tf(
         saver = tf.train.Saver(tf.trainable_variables())
         saver.save(session, os.path.join(save_dir, "model.ckpt"))
     config.save_pretrained(save_dir)
-    tokenizer.save_pretrained(save_dir)
+    # ernie gram 里边是vocab + \t + id
+    with open(paddle_vocab_file, 'r', encoding='utf-8') as f, \
+            open(os.path.join(save_dir, "vocab.txt"), 'w', encoding='utf-8') as w:
+        for line in f:
+            line = line.strip()
+            if '\t' in line:
+                line = line.split('\t')[0]
+            if line:
+                w.write(line + '\n')
 
 
 def main():

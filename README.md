@@ -81,7 +81,7 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 | **`MacBERT, Chinese`**    | **[MacBERT](https://github.com/ymcui/MacBERT)**|
 | **`ELECTRA, Chinese`**    | **[Chinese-ELECTRA](https://github.com/ymcui/Chinese-ELECTRA)**|
 | **`ERNIE 1.0.1, Chinese`**    | **[百度网盘(xrku)](https://pan.baidu.com/s/13eRD6uVnr4xeUfYXk8XKIw)**|
-| **`ERNIE gram base, Chinese`**    | **[百度网盘(mfiq)](https://pan.baidu.com/s/10wP7fdfGIEZt9fSUiVEd7A)**|
+| **`ERNIE gram base, Chinese`**    | **[百度网盘(7xet)](https://pan.baidu.com/s/1qzIuduI2ZRJDZSnNqTfscw)**|
 
 ## **更新记录**
 - 2021/5/19 增加机器阅读理解示例代码，以dureader2021比赛数据为例，应该兼容大部分squad格式的数据。
