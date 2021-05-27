@@ -83,7 +83,8 @@ def convert_example_to_feature(example: InputExample,
         text_pair=example.text_b,  # 传入句子 b，可以为None
         add_special_tokens=True,  # 是否增加 cls  sep
         max_length=max_length,  # 最大长度
-        padding="max_length"  # 是否将句子padding到最大长度
+        padding="max_length",  # 是否将句子padding到最大长度
+        truncation=True
     )
     if example.label is not None:
         # 多标签分类的话，先将label设为one hot 类型
