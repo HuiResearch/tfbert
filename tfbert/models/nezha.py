@@ -16,6 +16,7 @@ class NezhaModel(BaseModel):
             input_ids,
             attention_mask=None,
             token_type_ids=None,
+            return_pool=True,
             scope=None,
             reuse=False,
             compute_type=tf.float32
@@ -58,12 +59,14 @@ class NezhaModel(BaseModel):
                     config=self.config,
                     use_relative_position=True
                 )
-
-            with tf.variable_scope("pooler"):
-                pooled_output = layers.pooler_layer(
-                    sequence_output=encoder_outputs[0],
-                    hidden_size=self.config.hidden_size,
-                    initializer_range=self.config.initializer_range
-                )
+            if return_pool:
+                with tf.variable_scope("pooler"):
+                    pooled_output = layers.pooler_layer(
+                        sequence_output=encoder_outputs[0],
+                        hidden_size=self.config.hidden_size,
+                        initializer_range=self.config.initializer_range
+                    )
+            else:
+                pooled_output = None
         # (pooled output, sequence output, all layer outputs, all layer att probs)
         self.outputs = (pooled_output,) + encoder_outputs

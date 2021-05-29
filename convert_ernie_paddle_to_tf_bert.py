@@ -111,6 +111,15 @@ def convert_paddle_checkpoint_to_tf(
 
         saver = tf.train.Saver(tf.trainable_variables())
         saver.save(session, os.path.join(save_dir, "model.ckpt"))
+
+    if os.path.exists(os.path.join(save_dir, 'checkpoint')):
+        try:
+            os.remove(os.path.join(save_dir, 'checkpoint'))
+            print(
+                "We will delete the checkpoint file to avoid errors in loading weights "
+                "using tf.train.latest_checkpoint api.")
+        except:
+            pass
     config.save_pretrained(save_dir)
     # ernie gram 里边是vocab + \t + id
     with open(paddle_vocab_file, 'r', encoding='utf-8') as f, \

@@ -100,6 +100,7 @@ class TokenClassification:
             input_ids=input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
+            return_pool=False,
             compute_type=compute_type
         )
         sequence_output = model.get_sequence_output()
@@ -225,19 +226,33 @@ class QuestionAnswering:
             input_ids=input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
+            return_pool=False,
             compute_type=compute_type
         )
         sequence_output = model.get_sequence_output()
+        final_hidden_shape = model_utils.get_shape_list(sequence_output, expected_rank=3)
+        batch_size = final_hidden_shape[0]
+        seq_length = final_hidden_shape[1]
+        hidden_size = final_hidden_shape[2]
         with tf.variable_scope("qa_outputs"):
             if is_training:
                 sequence_output = model_utils.dropout(sequence_output,
                                                       dropout_prob=dropout_prob)
-            logits = tf.layers.dense(
-                sequence_output,
-                2,
-                kernel_initializer=create_initializer(config.initializer_range)
-            )
+            output_weights = tf.get_variable(
+                "kernel", [2, hidden_size],
+                initializer=tf.truncated_normal_initializer(stddev=0.02))
+
+            output_bias = tf.get_variable(
+                "bias", [2], initializer=tf.zeros_initializer())
+
+            final_hidden_matrix = tf.reshape(sequence_output,
+                                             [batch_size * seq_length, hidden_size])
+            logits = tf.matmul(final_hidden_matrix, output_weights, transpose_b=True)
+            logits = tf.nn.bias_add(logits, output_bias)
+
+            logits = tf.reshape(logits, [batch_size, seq_length, 2])
             logits = tf.transpose(logits, [2, 0, 1])
+
             unstacked_logits = tf.unstack(logits, axis=0)
 
             self.start_logits, self.end_logits = unstacked_logits[:2]
@@ -286,6 +301,7 @@ class MaskedLM:
             input_ids=input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
+            return_pool=False,
             compute_type=compute_type
         )
         sequence_output = model.get_sequence_output()
@@ -325,6 +341,7 @@ class PretrainingLM:
             input_ids=input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
+            return_pool=True,
             compute_type=compute_type
         )
         sequence_output = model.get_sequence_output()

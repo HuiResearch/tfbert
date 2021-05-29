@@ -16,6 +16,7 @@ class ElectraModel(BaseModel):
             input_ids,
             attention_mask=None,
             token_type_ids=None,
+            return_pool=True,
             scope=None,
             reuse=False,
             compute_type=tf.float32
@@ -60,6 +61,9 @@ class ElectraModel(BaseModel):
                 )
 
         # electra 的 pool output是直接返回first token的vec
-        pooled_output = encoder_outputs[0][:, 0]
+        if return_pool:
+            pooled_output = encoder_outputs[0][:, 0]
+        else:
+            pooled_output = None
         # (pooled output, sequence output, all layer outputs, all layer att probs)
         self.outputs = (pooled_output,) + encoder_outputs

@@ -101,7 +101,7 @@ class BaseTrainer:
         self.num_train_epochs = num_train_epochs
         self.max_checkpoints = max_checkpoints
         self.max_grad = max_grad
-        self.num_train_steps = train_steps * num_train_epochs // gradient_accumulation_steps
+        self.num_train_steps = (train_steps * num_train_epochs // gradient_accumulation_steps)
         self.learning_rate = learning_rate
         self.num_warmup_steps = num_warmup_steps
         self.warmup_proportion = warmup_proportion
@@ -207,9 +207,9 @@ class BaseTrainer:
 
     def compile(
             self,
-            gradient_accumulation_steps=1,
-            max_grad=1.0,
-            max_checkpoints=1,
+            gradient_accumulation_steps=None,
+            max_grad=None,
+            max_checkpoints=None,
             optimizer=None,
             var_list=None):
         """
@@ -458,10 +458,9 @@ class Trainer(BaseTrainer):
         self.gradient_accumulation_steps = gradient_accumulation_steps
         if isinstance(self.train_dataset, Dataset):
             self.train_steps = len(train_dataset)
-            self.num_train_steps = self.train_steps * num_train_epochs // gradient_accumulation_steps
+            self.num_train_steps = (self.train_steps * num_train_epochs // gradient_accumulation_steps)
             if warmup_proportion > 0:
                 self.num_warmup_steps = self.num_train_steps * warmup_proportion
-
         self.eval_steps = eval_steps
         if isinstance(self.eval_dataset, Dataset):
             self.eval_steps = len(self.eval_dataset)
@@ -714,7 +713,7 @@ class Trainer(BaseTrainer):
 
         if set_type == 'train' and steps > 0:
             self.train_steps = steps
-            self.num_train_steps = self.train_steps * self.num_train_epochs // self.gradient_accumulation_steps
+            self.num_train_steps = (self.train_steps * self.num_train_epochs // self.gradient_accumulation_steps)
             if self.warmup_proportion > 0:
                 self.num_warmup_steps = self.num_train_steps * self.warmup_proportion
 
@@ -809,6 +808,7 @@ class Trainer(BaseTrainer):
         tf.logging.info("***** Running training *****")
         tf.logging.info("  Num epochs = {}".format(self.num_train_epochs))
         tf.logging.info("  optimizer steps = %d", self.num_train_steps)
+        tf.logging.info("  gradient accumulation steps = %d", self.gradient_accumulation_steps)
         tf.logging.info("  Num devices = {}".format(self.num_devices))
         tf.logging.info("  Num params = {}".format(self.num_params))
 
@@ -821,7 +821,7 @@ class Trainer(BaseTrainer):
                 train_loss = self.train_step()
                 epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
 
-                if evaluate_during_training and (
+                if evaluate_during_training and self.global_step > 0 and (
                         self.global_step % logging_steps == 0 or self.global_step == self.num_train_steps):
                     metric = self.evaluate(self.eval_dataset, self.eval_steps, metric_fn, post_process_fn)
                     score = metric[metric_for_best_model]
@@ -837,7 +837,8 @@ class Trainer(BaseTrainer):
                     tf.logging.info(" eval score : {:.4f}".format(score))
                     tf.logging.info(" best score : {:.4f}".format(best_score))
                     report[self.global_step] = metric
-                if not evaluate_during_training and (saving_steps > 0 and self.global_step % saving_steps == 0):
+                if not evaluate_during_training and self.global_step > 0 and (
+                        saving_steps > 0 and self.global_step % saving_steps == 0):
                     check_dir(output_dir)
                     self.save_pretrained(output_dir, add_global_step=True)
                     never_saved = False
