@@ -86,7 +86,7 @@ def create_dataset(set_type, tokenizer, args):
         ))
     features = convert_examples_to_features(
         examples, tokenizer,
-        max_length=args.max_seq_length, set_type='train',
+        max_length=args.max_seq_length, set_type=set_type,
         label_list=args.labels, threads=args.threads)
     dataset = Dataset(features,
                       is_training=bool(set_type == 'train'),
