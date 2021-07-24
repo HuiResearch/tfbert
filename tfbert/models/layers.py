@@ -56,6 +56,7 @@ def attention(
         return output_tensor
 
     shape = model_utils.get_shape_list(input_tensor, expected_rank=3)
+
     size_per_head = hidden_size // num_attention_heads
     query_layer = dense(
         input_tensor=input_tensor,

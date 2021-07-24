@@ -34,7 +34,8 @@ class PTMTokenizer(object):
         "sep_token",
         "pad_token",
         "cls_token",
-        "mask_token"
+        "mask_token",
+        "additional_special_tokens"
     ]
 
     @property
@@ -73,6 +74,17 @@ class PTMTokenizer(object):
         return self._mask_token
 
     @property
+    def additional_special_tokens(self) -> List[str]:
+        """
+        :obj:`List[str]`: All the additional special tokens you may want to use. Log an error if used while not having
+        been set.
+        """
+        if self._additional_special_tokens is None:
+            tf.logging.error("Using additional_special_tokens, but it is not set yet.")
+            return None
+        return [str(tok) for tok in self._additional_special_tokens]
+
+    @property
     def unk_token_id(self):
         """ Id of the unknown token in the vocabulary. Log an error if used while not having been set. """
         return self.convert_tokens_to_ids(self.unk_token)
@@ -101,6 +113,14 @@ class PTMTokenizer(object):
     def mask_token_id(self):
         """ Id of the mask token in the vocabulary. E.g. when training a ptm with masked-language modeling. Log an error if used while not having been set. """
         return self.convert_tokens_to_ids(self.mask_token)
+
+    @property
+    def additional_special_tokens_ids(self) -> List[int]:
+        """
+        :obj:`List[int]`: Ids of all the additional special tokens in the vocabulary. Log an error if used while not
+        having been set.
+        """
+        return self.convert_tokens_to_ids(self.additional_special_tokens)
 
     @property
     def special_tokens_map_extended(self):
@@ -165,6 +185,10 @@ class PTMTokenizer(object):
     def mask_token(self, value):
         self._mask_token = value
 
+    @additional_special_tokens.setter
+    def additional_special_tokens(self, value):
+        self._additional_special_tokens = value
+
     def __init__(self, **kwargs):
 
         self._unk_token = None
@@ -172,6 +196,7 @@ class PTMTokenizer(object):
         self._pad_token = None
         self._cls_token = None
         self._mask_token = None
+        self._additional_special_tokens = []
         self._pad_token_type_id = 0
 
         self.num_special_tokens = 2
@@ -1083,7 +1108,7 @@ class PTMTokenizer(object):
                         or (
                                 isinstance(text[0], str)
                                 or (isinstance(text[0], (list, tuple)) and (
-                                    len(text[0]) == 0 or isinstance(text[0][0], str)))
+                                len(text[0]) == 0 or isinstance(text[0][0], str)))
                         )
                 )
         ), (
