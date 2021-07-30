@@ -11,16 +11,17 @@ tf.disable_v2_behavior()
 
 from .models import (
     BertModel, ALBertModel, ElectraModel,
-    NezhaModel, WoBertModel,
+    NezhaModel, WoBertModel, GlyceBertModel,
     SequenceClassification, MODELS, crf,
     TokenClassification, MultiLabelClassification,
     MaskedLM, PretrainingLM, QuestionAnswering)
 from .config import (
     BaseConfig, BertConfig, ALBertConfig,
-    ElectraConfig, NeZhaConfig, WoBertConfig, CONFIGS)
+    ElectraConfig, NeZhaConfig, WoBertConfig, GlyceBertConfig, CONFIGS)
 from .tokenizer import (
     BasicTokenizer, BertTokenizer, WoBertTokenizer,
-    ALBertTokenizer, ElectraTokenizer, NeZhaTokenizer, TOKENIZERS)
+    ALBertTokenizer, ElectraTokenizer, NeZhaTokenizer,
+    GlyceBertTokenizer, TOKENIZERS)
 
 from .utils import (
     devices, init_checkpoints,

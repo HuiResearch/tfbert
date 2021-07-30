@@ -7,12 +7,12 @@
 
 from .base import BaseConfig
 from .ptm import (
-    BertConfig, ALBertConfig, ElectraConfig)
+    BertConfig, ALBertConfig, ElectraConfig, GlyceBertConfig)
 from .ptm import BertConfig as NeZhaConfig
 from .ptm import BertConfig as WoBertConfig
 
 CONFIGS = {
     'bert': BertConfig, 'albert': ALBertConfig,
     'nezha': NeZhaConfig, 'electra': ElectraConfig,
-    'wobert': WoBertConfig
+    'wobert': WoBertConfig, 'glyce_bert': GlyceBertConfig
 }

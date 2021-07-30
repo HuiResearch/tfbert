@@ -4,6 +4,7 @@
 # @Author    :huanghui
 
 import tensorflow.compat.v1 as tf
+from tensorflow.python.ops import gen_nn_ops
 import math
 from . import model_utils, activations
 from . import crf
@@ -292,20 +293,21 @@ def conv2d_layer(
     if strides is None:
         strides = [1, 1, 1, 1]
     W = tf.get_variable(
-        name='weight', shape=filter_shape,
+        name='kernel', shape=filter_shape,
         initializer=model_utils.create_initializer(initializer_range))
     b = tf.get_variable(
         name='bias', shape=[filter_shape[-1]],
         initializer=model_utils.create_initializer(initializer_range))
     output = tf.nn.conv2d(input_tensor, W, strides=strides, padding=padding)
+    output = tf.nn.bias_add(output, b)
     act_fn = activations.get_activation(act)
     if act_fn is not None:
-        output = act_fn(tf.nn.bias_add(output, b))
+        output = act_fn(output)
     return output
 
 
 def max_pooling_layer(
-        input_tensor, ksize: List[int],
+        input_tensor, ksize,
         strides=None, padding="VALID",
         name='max_pool'):
     """
@@ -319,13 +321,22 @@ def max_pooling_layer(
     """
     if strides is None:
         strides = [1, 1, 1, 1]
-    output = tf.nn.max_pool(
+
+    # 支持动态大小的池化
+    output = gen_nn_ops.max_pool_v2(
         input_tensor,
         ksize=ksize,
         strides=strides,
         padding=padding,
         name=name
     )
+    # output = tf.nn.max_pool(
+    #     input_tensor,
+    #     ksize=ksize,
+    #     strides=strides,
+    #     padding=padding,
+    #     name=name
+    # )
     return output
 
 

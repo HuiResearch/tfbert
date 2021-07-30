@@ -15,6 +15,7 @@ class SequenceClassification:
                  num_classes,
                  is_training,
                  input_ids,
+                 pinyin_ids=None,
                  attention_mask=None,
                  token_type_ids=None,
                  label_ids=None,
@@ -38,13 +39,17 @@ class SequenceClassification:
         if model_type not in MODELS:
             raise ValueError("Unsupported model option: {}, "
                              "you can choose one of {}".format(model_type, "、".join(MODELS.keys())))
+        kwargs = {
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
+            'token_type_ids': token_type_ids}
+        if model_type == 'glyce_bert':
+            kwargs['pinyin_ids'] = pinyin_ids
 
         model = MODELS[model_type](
             config,
             is_training=is_training,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
+            **kwargs,
             compute_type=compute_type
         )
         pooled_output = model.get_pooled_output()
@@ -69,6 +74,7 @@ class TokenClassification:
                  num_classes,
                  is_training,
                  input_ids,
+                 pinyin_ids=None,
                  attention_mask=None,
                  token_type_ids=None,
                  label_ids=None,
@@ -93,14 +99,17 @@ class TokenClassification:
         if model_type not in MODELS:
             raise ValueError("Unsupported model option: {}, "
                              "you can choose one of {}".format(model_type, "、".join(MODELS.keys())))
+        kwargs = {
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
+            'token_type_ids': token_type_ids}
+        if model_type == 'glyce_bert':
+            kwargs['pinyin_ids'] = pinyin_ids
 
         model = MODELS[model_type](
             config,
             is_training=is_training,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            return_pool=False,
+            **kwargs,
             compute_type=compute_type
         )
         sequence_output = model.get_sequence_output()
@@ -141,6 +150,7 @@ class MultiLabelClassification:
                  num_classes,
                  is_training,
                  input_ids,
+                 pinyin_ids=None,
                  attention_mask=None,
                  token_type_ids=None,
                  label_ids=None,
@@ -164,13 +174,17 @@ class MultiLabelClassification:
         if model_type not in MODELS:
             raise ValueError("Unsupported model option: {}, "
                              "you can choose one of {}".format(model_type, "、".join(MODELS.keys())))
+        kwargs = {
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
+            'token_type_ids': token_type_ids}
+        if model_type == 'glyce_bert':
+            kwargs['pinyin_ids'] = pinyin_ids
 
         model = MODELS[model_type](
             config,
             is_training=is_training,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
+            **kwargs,
             compute_type=compute_type
         )
         pooled_output = model.get_pooled_output()
@@ -196,6 +210,7 @@ class QuestionAnswering:
                  config,
                  is_training,
                  input_ids,
+                 pinyin_ids=None,
                  attention_mask=None,
                  token_type_ids=None,
                  start_position=None,
@@ -219,14 +234,17 @@ class QuestionAnswering:
         if model_type not in MODELS:
             raise ValueError("Unsupported model option: {}, "
                              "you can choose one of {}".format(model_type, "、".join(MODELS.keys())))
+        kwargs = {
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
+            'token_type_ids': token_type_ids}
+        if model_type == 'glyce_bert':
+            kwargs['pinyin_ids'] = pinyin_ids
 
         model = MODELS[model_type](
             config,
             is_training=is_training,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            return_pool=False,
+            **kwargs,
             compute_type=compute_type
         )
         sequence_output = model.get_sequence_output()
@@ -270,6 +288,7 @@ class MaskedLM:
             config,
             is_training,
             input_ids,
+            pinyin_ids=None,
             attention_mask=None,
             token_type_ids=None,
             masked_lm_ids=None,
@@ -294,14 +313,17 @@ class MaskedLM:
         if model_type not in MODELS:
             raise ValueError("Unsupported model option: {}, "
                              "you can choose one of {}".format(model_type, "、".join(MODELS.keys())))
+        kwargs = {
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
+            'token_type_ids': token_type_ids}
+        if model_type == 'glyce_bert':
+            kwargs['pinyin_ids'] = pinyin_ids
 
         model = MODELS[model_type](
             config,
             is_training=is_training,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            return_pool=False,
+            **kwargs,
             compute_type=compute_type
         )
         sequence_output = model.get_sequence_output()
@@ -322,6 +344,7 @@ class PretrainingLM:
             config,
             is_training,
             input_ids,
+            pinyin_ids=None,
             attention_mask=None,
             token_type_ids=None,
             masked_lm_ids=None,
@@ -334,14 +357,17 @@ class PretrainingLM:
         if model_type not in MODELS:
             raise ValueError("Unsupported model option: {}, "
                              "you can choose one of {}".format(model_type, "、".join(MODELS.keys())))
+        kwargs = {
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
+            'token_type_ids': token_type_ids}
+        if model_type == 'glyce_bert':
+            kwargs['pinyin_ids'] = pinyin_ids
 
         model = MODELS[model_type](
             config,
             is_training=is_training,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            return_pool=True,
+            **kwargs,
             compute_type=compute_type
         )
         sequence_output = model.get_sequence_output()

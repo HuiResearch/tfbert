@@ -8,6 +8,7 @@ from .bert import BertModel as WoBertModel
 from .albert import ALBertModel
 from .electra import ElectraModel
 from .nezha import NezhaModel
+from .glyce_bert import GlyceBertModel
 from .model_utils import (
     dropout, layer_norm_and_dropout, layer_norm,
     create_weight, get_shape_list, gather_indexes, create_initializer)
@@ -21,7 +22,8 @@ MODELS = {
     'albert': ALBertModel,
     'electra': ElectraModel,
     'wobert': WoBertModel,
-    'nezha': NezhaModel
+    'nezha': NezhaModel,
+    'glyce_bert': GlyceBertModel
 }
 
 from .for_task import (

@@ -9,9 +9,10 @@ from .albert import ALBertTokenizer
 from .bert import BertTokenizer as NeZhaTokenizer
 from .bert import BertTokenizer as ElectraTokenizer
 from .wobert import WoBertTokenizer
+from .glyce_bert import GlyceBertTokenizer
 
 TOKENIZERS = {
     'bert': BertTokenizer, 'albert': ALBertTokenizer,
     'nezha': NeZhaTokenizer, 'electra': ElectraTokenizer,
-    'wobert': WoBertTokenizer
+    'wobert': WoBertTokenizer, 'glyce_bert': GlyceBertTokenizer
 }

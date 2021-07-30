@@ -89,6 +89,8 @@ def compute_types(example, columns=None):
             return tf.int32
         elif (isinstance(values, list) and isinstance(values[0], str)) or isinstance(values, str):
             return tf.string
+        elif isinstance(values, list) and isinstance(values[0], list):
+            return fn(values[0])
         else:
             raise ValueError(f"values={values} has dtype {values.dtype}, which cannot be supported")
 

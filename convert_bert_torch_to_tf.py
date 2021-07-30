@@ -13,13 +13,17 @@ import torch
 
 def convert_pytorch_checkpoint_to_tf(pt_weight_file, pt_config_file, pt_vocab_file, save_dir: str):
     tensors_to_transpose = (
-        "dense.weight", "attention.self.query", "attention.self.key", "attention.self.value")
+        "dense.weight", "attention.self.query", "attention.self.key", "attention.self.value", "glyph_map.weight",
+        "map_fc.weight")
+    glyce_bert_conv_tensors = ("conv.weight",)
 
     var_map = (
         ("layer.", "layer_"),
         ("word_embeddings.weight", "word_embeddings"),
         ("position_embeddings.weight", "position_embeddings"),
         ("token_type_embeddings.weight", "token_type_embeddings"),
+        ("pinyin_embeddings.embedding.weight", "pinyin_embeddings/embeddings"),
+        ("glyph_embeddings.embedding.weight", "glyph_embeddings/embeddings"),
         (".", "/"),
         ("LayerNorm/weight", "LayerNorm/gamma"),
         ("LayerNorm/bias", "LayerNorm/beta"),
@@ -50,6 +54,10 @@ def convert_pytorch_checkpoint_to_tf(pt_weight_file, pt_config_file, pt_vocab_fi
             torch_tensor = state_dict[var_name].numpy()
             if any([x in var_name for x in tensors_to_transpose]):
                 torch_tensor = torch_tensor.T
+            if any([x in var_name for x in glyce_bert_conv_tensors]):
+                torch_tensor = torch_tensor.T
+                torch_tensor = np.expand_dims(torch_tensor, axis=2)
+
             tf_var = create_tf_var(tensor=torch_tensor, name=tf_name, session=session)
             tf.keras.backend.set_value(tf_var, torch_tensor)
             tf_weight = session.run(tf_var)
@@ -69,6 +77,12 @@ def convert_pytorch_checkpoint_to_tf(pt_weight_file, pt_config_file, pt_vocab_fi
         shutil.copyfile(pt_config_file, os.path.join(save_dir, 'config.json'))
     if pt_vocab_file is not None and os.path.exists(pt_vocab_file):
         shutil.copyfile(pt_vocab_file, os.path.join(save_dir, 'vocab.txt'))
+
+    config_path = os.path.join(os.path.split(pt_config_file)[0], 'config')
+    target_dir = os.path.join(save_dir, 'config')
+    if os.path.isdir(config_path) and not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+        shutil.copytree(config_path, target_dir)
 
 
 def main():
