@@ -4,45 +4,17 @@
 @file: pretrain.py
 @date: 2021/03/22
 """
-import tensorflow.compat.v1 as tf
-from . import BaseClass, process_dataset
+from . import BaseClass, multiple_convert_examples_to_features, single_example_to_features
 from ..tokenizer.tokenization_base import convert_to_unicode
+from ..tokenizer import GlyceBertTokenizer
 import random
 import numpy as np
 import collections
-from typing import List
+from functools import partial
 
 CLS_TOKEN = "[CLS]"
 SEP_TOKEN = "[SEP]"
 MASK_TOKEN = "[MASK]"
-
-
-def return_types_and_shapes(for_trainer, only_mlm=False):
-    if for_trainer:
-        shape = tf.TensorShape([None, None])
-        label_shape = tf.TensorShape([None])
-    else:
-        shape = tf.TensorShape([None])
-        label_shape = tf.TensorShape([])
-
-    output_types = {"input_ids": tf.int32,
-                    "attention_mask": tf.int32,
-                    "token_type_ids": tf.int32,
-                    'masked_lm_positions': tf.int32,
-                    'masked_lm_ids': tf.int32,
-                    'masked_lm_weights': tf.float32,
-                    'next_sentence_labels': tf.int32}
-    output_shapes = {"input_ids": shape,
-                     "attention_mask": shape,
-                     "token_type_ids": shape,
-                     'masked_lm_positions': shape,
-                     'masked_lm_ids': shape,
-                     'masked_lm_weights': shape,
-                     'next_sentence_labels': label_shape}
-    if only_mlm:
-        output_types.pop("next_sentence_labels")
-        output_shapes.pop("next_sentence_labels")
-    return output_types, output_shapes
 
 
 class InputExample(BaseClass):
@@ -67,6 +39,7 @@ class InputFeature(BaseClass):
                  input_ids,
                  attention_mask=None,
                  token_type_ids=None,
+                 pinyin_ids=None,
                  masked_lm_positions=None,
                  masked_lm_ids=None,
                  masked_lm_weights=None,
@@ -75,124 +48,92 @@ class InputFeature(BaseClass):
         self.input_ids = input_ids
         self.attention_mask = attention_mask
         self.token_type_ids = token_type_ids
+        self.pinyin_ids = pinyin_ids
         self.masked_lm_positions = masked_lm_positions
         self.masked_lm_ids = masked_lm_ids
         self.masked_lm_weights = masked_lm_weights
         self.next_sentence_labels = next_sentence_labels
 
 
-def create_dataset_by_gen(
-        features: List[InputFeature],
-        batch_size,
-        set_type='train',
-        only_mlm=False):
-    def gen():
-        for ex in features:
-            feature = {
-                "input_ids": ex.input_ids,
-                "attention_mask": ex.attention_mask,
-                "token_type_ids": ex.token_type_ids,
-                'masked_lm_positions': ex.masked_lm_positions,
-                'masked_lm_ids': ex.masked_lm_ids,
-                'masked_lm_weights': ex.masked_lm_weights
-            }
-            if not only_mlm:
-                feature['next_sentence_labels'] = ex.next_sentence_labels
-            yield feature
-
-    output_types, output_shapes = return_types_and_shapes(
-        for_trainer=False, only_mlm=only_mlm)
-
-    # 这种方式需要传入生成器，定义好数据类型，数据的shape
-    dataset = tf.data.Dataset.from_generator(
-        gen,
-        output_types,
-        output_shapes
-    )
-
-    return process_dataset(dataset, batch_size, len(features), set_type)
+def convert_example_to_feature_init(tokenizer_for_convert):
+    global tokenizer
+    tokenizer = tokenizer_for_convert
 
 
-def create_dataset_from_slices(
-        features: List[InputFeature],
-        batch_size,
-        set_type='train',
-        only_mlm=False
-):
-    '''
-    :param features:
-    :param batch_size:
-    :param set_type:
-    :param only_mlm:
-    :return:
-    '''
-    tensor_slices = {
-        "input_ids":
-            tf.constant(
-                [f.input_ids for f in features],
-                dtype=tf.int32),
-        "attention_mask":
-            tf.constant(
-                [f.attention_mask for f in features],
-                dtype=tf.int32),
-        "token_type_ids":
-            tf.constant(
-                [f.token_type_ids for f in features],
-                dtype=tf.int32),
-        "masked_lm_positions":
-            tf.constant([f.masked_lm_positions for f in features], dtype=tf.int32),
-        "masked_lm_ids":
-            tf.constant([f.masked_lm_ids for f in features], dtype=tf.int32),
-        "masked_lm_weights":
-            tf.constant([f.masked_lm_weights for f in features], dtype=tf.int32)
-    }
+def convert_example_to_feature(
+        example: InputExample, max_length, max_predictions_per_seq, only_mlm=False):
+    input_ids = tokenizer.convert_tokens_to_ids(example.tokens)
+    attention_mask = [1] * len(input_ids)
+    token_type_ids = list(example.token_type_ids)
+
+    assert len(input_ids) <= max_length
+
+    while len(input_ids) < max_length:
+        input_ids.append(0)
+        attention_mask.append(0)
+        token_type_ids.append(0)
+    assert len(input_ids) == max_length
+    assert len(attention_mask) == max_length
+    assert len(token_type_ids) == max_length
+
+    masked_lm_positions = list(example.masked_lm_positions)
+    masked_lm_ids = tokenizer.convert_tokens_to_ids(example.masked_lm_labels)
+    masked_lm_weights = [1.0] * len(masked_lm_ids)
+
+    while len(masked_lm_positions) < max_predictions_per_seq:
+        masked_lm_positions.append(0)
+        masked_lm_ids.append(0)
+        masked_lm_weights.append(0.0)
     if not only_mlm:
-        tensor_slices['next_sentence_labels'] = tf.constant([f.next_sentence_labels for f in features], dtype=tf.int32)
-    dataset = tf.data.Dataset.from_tensor_slices(tensor_slices)
-    return process_dataset(dataset, batch_size, len(features), set_type)
+        sentence_order_label = 1 if example.is_random_next else 0
+    else:
+        sentence_order_label = None
+
+    if isinstance(tokenizer, GlyceBertTokenizer):
+        pinyin_ids = tokenizer.convert_token_ids_to_pinyin_ids(input_ids)
+    else:
+        pinyin_ids = None
+    feature = InputFeature(
+        guid=0,
+        input_ids=input_ids,
+        attention_mask=attention_mask,
+        token_type_ids=token_type_ids,
+        pinyin_ids=pinyin_ids,
+        masked_lm_positions=masked_lm_positions,
+        masked_lm_ids=masked_lm_ids,
+        masked_lm_weights=masked_lm_weights,
+        next_sentence_labels=sentence_order_label
+    )
+    return feature
 
 
-def convert_examples_to_features(examples, tokenizer, max_length, max_predictions_per_seq, only_mlm=False):
-    features = []
-    for (ex_id, example) in enumerate(examples):
-        input_ids = tokenizer.convert_tokens_to_ids(example.tokens)
-        attention_mask = [1] * len(input_ids)
-        token_type_ids = list(example.token_type_ids)
-
-        assert len(input_ids) <= max_length
-
-        while len(input_ids) < max_length:
-            input_ids.append(0)
-            attention_mask.append(0)
-            token_type_ids.append(0)
-        assert len(input_ids) == max_length
-        assert len(attention_mask) == max_length
-        assert len(token_type_ids) == max_length
-
-        masked_lm_positions = list(example.masked_lm_positions)
-        masked_lm_ids = tokenizer.convert_tokens_to_ids(example.masked_lm_labels)
-        masked_lm_weights = [1.0] * len(masked_lm_ids)
-
-        while len(masked_lm_positions) < max_predictions_per_seq:
-            masked_lm_positions.append(0)
-            masked_lm_ids.append(0)
-            masked_lm_weights.append(0.0)
-        if not only_mlm:
-            sentence_order_label = 1 if example.is_random_next else 0
-        else:
-            sentence_order_label = None
-        feature = InputFeature(
-            guid=ex_id,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            masked_lm_positions=masked_lm_positions,
-            masked_lm_ids=masked_lm_ids,
-            masked_lm_weights=masked_lm_weights,
-            next_sentence_labels=sentence_order_label
+def convert_examples_to_features(
+        examples, tokenizer, max_length, max_predictions_per_seq, only_mlm=False, set_type='train', threads=1):
+    annotate_ = partial(
+        convert_example_to_feature,
+        max_length=max_length,
+        max_predictions_per_seq=max_predictions_per_seq,
+        only_mlm=only_mlm
+    )
+    if threads > 1:
+        features = multiple_convert_examples_to_features(
+            examples,
+            annotate_=annotate_,
+            initializer=convert_example_to_feature_init,
+            initargs=(tokenizer,),
+            threads=threads
         )
-        features.append(feature)
-    return features
+    else:
+        convert_example_to_feature_init(tokenizer)
+        features = single_example_to_features(
+            examples, annotate_=annotate_
+        )
+    new_features = []
+    i = 0
+    for feature in features:
+        feature.guid = set_type + '-' + str(i)
+        new_features.append(feature)
+    return new_features
 
 
 def create_examples(

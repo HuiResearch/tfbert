@@ -14,10 +14,6 @@ from typing import List
 import collections
 import math
 
-"""
-像其它任务中的return_types_and_shapes、create_dataset_by_gen这些方法就不写了，直接用Dataset吧
-"""
-
 
 class SquadExample(BaseClass):
     """
@@ -107,23 +103,25 @@ class SquadFeatures(BaseClass):
     def __init__(
             self,
             input_ids,
-            attention_mask,
-            token_type_ids,
-            cls_index,
-            p_mask,
-            example_index,
-            unique_id,
-            paragraph_len,
-            token_is_max_context,
-            tokens,
-            token_to_orig_map,
-            start_position,
-            end_position,
-            is_impossible
+            attention_mask=None,
+            token_type_ids=None,
+            pinyin_ids=None,
+            cls_index=None,
+            p_mask=None,
+            example_index=None,
+            unique_id=None,
+            paragraph_len=None,
+            token_is_max_context=None,
+            tokens=None,
+            token_to_orig_map=None,
+            start_position=None,
+            end_position=None,
+            is_impossible=None
     ):
         self.input_ids = input_ids
         self.attention_mask = attention_mask
         self.token_type_ids = token_type_ids
+        self.pinyin_ids = pinyin_ids
         self.cls_index = cls_index
         self.p_mask = p_mask
 
@@ -442,8 +440,9 @@ def convert_example_to_features(
                 span["input_ids"],
                 span["attention_mask"],
                 span["token_type_ids"],
-                cls_index,
-                p_mask.tolist(),
+                pinyin_ids=span['pinyin_ids'] if "pinyin_ids" in span else None,
+                cls_index=cls_index,
+                p_mask=p_mask.tolist(),
                 example_index=0,
                 # Can not set unique_id and example_index here. They will be set after multiple processing.
                 unique_id=0,

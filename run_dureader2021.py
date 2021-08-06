@@ -131,7 +131,10 @@ def create_dataset(set_type, tokenizer, args, return_examples=False):
                       drop_last=bool(set_type == 'train'),
                       buffer_size=len(features),
                       max_length=args.max_seq_length)
-    dataset.format_as(['input_ids', 'attention_mask', 'token_type_ids', 'start_position', 'end_position'])
+    columns = ['input_ids', 'attention_mask', 'token_type_ids', 'start_position', 'end_position']
+    if "pinyin_ids" in features[0] and features[0]['pinyin_ids'] is not None:
+        columns = ['input_ids', 'attention_mask', 'token_type_ids', 'pinyin_ids', 'start_position', 'end_position']
+    dataset.format_as(columns)
     if return_examples:
         return dataset, examples, features
     return dataset
@@ -158,14 +161,21 @@ def get_serving_fn(config, args):
         input_ids = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='input_ids')
         attention_mask = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='attention_mask')
         token_type_ids = tf.placeholder(shape=[None, args.max_seq_length], dtype=tf.int64, name='token_type_ids')
+        if args.model_type == 'glyce_bert':
+            pinyin_ids = tf.placeholder(shape=[None, args.max_seq_length, 8], dtype=tf.int64, name='pinyin_ids')
+        else:
+            pinyin_ids = None
         model = QuestionAnswering(
             model_type=args.model_type, config=config,
             is_training=False,
             input_ids=input_ids,
+            pinyin_ids=pinyin_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids
         )
         inputs = {'input_ids': input_ids, 'attention_mask': attention_mask, 'token_type_ids': token_type_ids}
+        if pinyin_ids is not None:
+            inputs['pinyin_ids'] = pinyin_ids
         outputs = {'start_logits': model.start_logits, 'end_logits': model.end_logits}
         return inputs, outputs
 

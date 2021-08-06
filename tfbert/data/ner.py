@@ -5,29 +5,9 @@
 @date: 2020/09/12
 """
 from functools import partial
-import tensorflow.compat.v1 as tf
-from . import process_dataset, BaseClass, multiple_convert_examples_to_features, single_example_to_features
+from . import BaseClass, multiple_convert_examples_to_features, single_example_to_features
+from ..tokenizer import GlyceBertTokenizer
 from typing import List
-
-
-def return_types_and_shapes(for_trainer):
-    if for_trainer:
-        shape = tf.TensorShape([None, None])
-        label_shape = tf.TensorShape([None, None])
-    else:
-        shape = tf.TensorShape([None])
-        label_shape = tf.TensorShape([None])
-
-    output_types = {"input_ids": tf.int32,
-                    "attention_mask": tf.int32,
-                    "token_type_ids": tf.int32,
-                    'label_ids': tf.int32}
-    output_shapes = {"input_ids": shape,
-                     "attention_mask": shape,
-                     "token_type_ids": shape,
-                     'label_ids': label_shape}
-
-    return output_types, output_shapes
 
 
 class InputExample(BaseClass):
@@ -45,6 +25,7 @@ class InputFeature(BaseClass):
                  input_ids: List[int],
                  attention_mask: List[int] = None,
                  token_type_ids: List[int] = None,
+                 pinyin_ids=None,
                  label_ids: List[int] = None,
                  tok_to_orig_index: List[int] = None,
                  ex_id=None):
@@ -52,6 +33,7 @@ class InputFeature(BaseClass):
         self.input_ids = input_ids
         self.attention_mask = attention_mask
         self.token_type_ids = token_type_ids
+        self.pinyin_ids = pinyin_ids
         self.label_ids = label_ids
         self.ex_id = ex_id
         self.tok_to_orig_index = tok_to_orig_index
@@ -110,6 +92,11 @@ def convert_example_to_feature(
     if has_label:
         label_ids += [pad_token_label_id] * padding_length
 
+    if isinstance(tokenizer, GlyceBertTokenizer):
+        pinyin_ids = tokenizer.convert_token_ids_to_pinyin_ids(input_ids)
+    else:
+        pinyin_ids = None
+
     assert len(input_ids) == max_length
     assert len(attention_mask) == max_length
     assert len(token_type_ids) == max_length
@@ -118,8 +105,10 @@ def convert_example_to_feature(
 
     return InputFeature(
         guid=str(0),
-        input_ids=input_ids, attention_mask=attention_mask,
+        input_ids=input_ids,
+        attention_mask=attention_mask,
         token_type_ids=token_type_ids,
+        pinyin_ids=pinyin_ids,
         label_ids=label_ids if has_label else None,
         tok_to_orig_index=tok_to_orig_index
     )
@@ -168,66 +157,3 @@ def convert_examples_to_features(
         feature.guid = set_type + '-' + str(i)
         new_features.append(feature)
     return new_features
-
-
-def create_dataset_by_gen(
-        features, batch_size,
-        set_type='train'
-):
-    '''
-    通过生成器的方式包装dataset
-    :param features:
-    :param batch_size:
-    :param set_type:
-    :return:
-    '''
-
-    def gen():
-        for ex in features:
-            yield {
-                "input_ids": ex.input_ids,
-                "attention_mask": ex.attention_mask,
-                "token_type_ids": ex.token_type_ids,
-                'label_ids': ex.label_ids,
-            }
-
-    output_types, output_shapes = return_types_and_shapes(
-        for_trainer=False)
-
-    # 这种方式需要传入生成器，定义好数据类型，数据的shape
-    dataset = tf.data.Dataset.from_generator(
-        gen,
-        output_types,
-        output_shapes
-    )
-    return process_dataset(dataset, batch_size, len(features), set_type)
-
-
-def create_dataset_from_slices(
-        features, batch_size,
-        set_type='train',
-):
-    '''
-    通过生成器的方式包装dataset
-    :param features:
-    :param batch_size:
-    :param set_type:
-    :return:
-    '''
-    dataset = tf.data.Dataset.from_tensor_slices({
-        "input_ids":
-            tf.constant(
-                [f.input_ids for f in features],
-                dtype=tf.int32),
-        "attention_mask":
-            tf.constant(
-                [f.attention_mask for f in features],
-                dtype=tf.int32),
-        "token_type_ids":
-            tf.constant(
-                [f.token_type_ids for f in features],
-                dtype=tf.int32),
-        "label_ids":
-            tf.constant([f.label_ids for f in features], dtype=tf.int32),
-    })
-    return process_dataset(dataset, batch_size, len(features), set_type)

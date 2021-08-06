@@ -89,7 +89,6 @@ CUDA_VISIBLE_DEVICES=1,2 python run.py
 - 2021/7/31 内置模型新增香侬科技开源的ChineseBert，见[glyce_bert](tfbert/models/glyce_bert.py)，目前官方只有torch版本。
   模型增加了字形和拼音特征作为embedding表示，获得了和mac bert接近的效果，官方见[ChineseBert](https://github.com/ShannonAI/ChineseBert)
 。tf权重已经转好，可自行下载。
-  目前内置数据处理没有增加拼音特征，因此只写了一个简单[文本分类示例](run_classifier_glyce_bert.py)，后期再进行完善。
 
 - 2021/5/19 增加机器阅读理解示例代码，以dureader2021比赛数据为例，应该兼容大部分squad格式的数据。
   同时更新tokenizer代码，贴合transformers使用接口，大部分直接整合的transformers的tokenizer

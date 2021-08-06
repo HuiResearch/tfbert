@@ -21,6 +21,15 @@ class BaseClass:
         return "{} \n {}".format(
             self.__class__.__name__, json.dumps(self.dict(), ensure_ascii=False))
 
+    def keys(self):
+        return list(self.dict().keys())
+
+    def __getitem__(self, item):
+        return self.dict()[item]
+
+    def __contains__(self, item):
+        return item in self.dict()
+
 
 def single_example_to_features(
         examples, annotate_, desc='convert examples to feature'):

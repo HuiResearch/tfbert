@@ -16,7 +16,7 @@ class AdversarialOutput:
     def keys(self):
         return list(self.outputs.keys())
 
-    def __getattr__(self, item):
+    def __getitem__(self, item):
         return self.outputs[item]
 
 
