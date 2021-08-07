@@ -3,11 +3,7 @@
 - 支持多GPU训练，支持梯度累积，支持pb模型导出，自动剔除adam参数
 - 采用dataset 和 string handle配合，可以灵活训练、验证、测试，在训练阶段也可以使用验证集测试模型，并根据验证结果保存参数。
 
-## 背景
 
-用完pytorch后真的觉得好用，但是pytorch在部署上没有tensorflow方便。
-tensorflow 2.x的话毛病多多，estimator呢我用得不太习惯，平时也用不到tpu....
-因此我就整理了这么一个项目，希望能方便和我情况一样的tf boys。
 ## 说明
 
 
