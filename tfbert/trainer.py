@@ -816,10 +816,12 @@ class Trainer(BaseTrainer):
         never_saved = True
         best_score = 0 if greater_is_better else 1e8
         for epoch in trange(self.num_train_epochs):
-            epoch_iter = bar_fn(range(self.train_steps), desc='epoch {} '.format(epoch + 1))
+            epoch_iter = bar_fn(range(self.train_steps), desc='epoch {}'.format(epoch + 1))
+            train_losses = 0
             for step in epoch_iter:
                 train_loss = self.train_step()
-                epoch_iter.set_description(desc='epoch {} ,loss {:.4f}'.format(epoch + 1, train_loss))
+                train_losses += train_loss
+                epoch_iter.set_postfix(loss=round(train_losses / (step + 1), 4))
 
                 if evaluate_during_training and self.global_step > 0 and (
                         self.global_step % logging_steps == 0 or self.global_step == self.num_train_steps):
