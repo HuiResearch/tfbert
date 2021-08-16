@@ -195,28 +195,31 @@ def main():
     )
     trainer.build_model(model_fn=get_model_fn(config, args))
     if args.do_train and train_dataset is not None:
+        # 训练阶段需要先compile优化器才能初始化权重
+        # 因为adam也是具备参数的
         trainer.compile()
-        trainer.from_pretrained(
-            args.model_dir if args.pretrained_checkpoint_path is None else args.pretrained_checkpoint_path)
 
+    trainer.from_pretrained(
+        args.model_dir if args.pretrained_checkpoint_path is None else args.pretrained_checkpoint_path)
+    if args.do_train and train_dataset is not None:
         trainer.train(
             output_dir=args.output_dir,
             evaluate_during_training=args.evaluate_during_training,
             logging_steps=args.logging_steps,
             saving_steps=args.saving_steps,
-            greater_is_better=True, metric_for_best_model='accuracy')
+            greater_is_better=True,
+            load_best_model=True,
+            metric_for_best_model='accuracy')
         config.save_pretrained(args.output_dir)
         tokenizer.save_pretrained(args.output_dir)
 
     if args.do_eval and dev_dataset is not None:
-        trainer.from_pretrained(args.output_dir)
         eval_outputs = trainer.evaluate()
         print(json.dumps(
             eval_outputs, ensure_ascii=False, indent=4
         ))
 
     if args.do_predict and predict_dataset is not None:
-        trainer.from_pretrained(args.output_dir)
         outputs = trainer.predict('test', ['logits'], dataset=predict_dataset)
         label_ids = np.argmax(outputs['logits'], axis=-1)
         labels = list(map(lambda x: args.labels[x], label_ids))

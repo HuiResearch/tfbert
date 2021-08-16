@@ -190,6 +190,7 @@ class BaseTrainer:
         ckpt = self.check_file(save_path_or_name)
         self.saver.save(self.session, ckpt, self.global_step if add_global_step else None)
         tf.logging.info("  Saved model to {}".format(ckpt))
+        return ckpt
 
     def prepare_optimizer(self):
         """
@@ -766,6 +767,7 @@ class Trainer(BaseTrainer):
               saving_steps=0,
               greater_is_better=True,
               metric_for_best_model=None,
+              load_best_model=True,
               eval_dataset: Optional[Union[tf.data.Dataset, Dataset]] = None,
               eval_steps=0):
         """
@@ -780,6 +782,7 @@ class Trainer(BaseTrainer):
         :param saving_steps:
         :param greater_is_better: 是否验证结果高表示效果好
         :param metric_for_best_model: 评估模型指标字段，也就是用metric fn返回字典结果中哪个结果筛选模型
+        :param load_best_model: 是否在训练结束后加载保存的最优模型
         :param eval_dataset:
         :param eval_steps: 验证一轮的步数
         :return:
@@ -815,6 +818,7 @@ class Trainer(BaseTrainer):
         report = {}
         never_saved = True
         best_score = 0 if greater_is_better else 1e8
+        best_model_file = None
         for epoch in trange(self.num_train_epochs):
             epoch_iter = bar_fn(range(self.train_steps), desc='epoch {}'.format(epoch + 1))
             train_losses = 0
@@ -830,7 +834,7 @@ class Trainer(BaseTrainer):
                     should_save = ((score > best_score) if greater_is_better else (score < best_score))
                     if should_save:
                         best_score = score
-                        self.save_pretrained(
+                        best_model_file = self.save_pretrained(
                             output_dir, add_global_step=False
                         )
                         never_saved = False
@@ -851,7 +855,11 @@ class Trainer(BaseTrainer):
         json.dump(
             report, open(os.path.join(output_dir, 'train_report.json'), 'w', encoding='utf-8'),
             ensure_ascii=False, indent=4)
+
         tf.logging.info("***** Finished Training *****")
+        if load_best_model and best_model_file is not None:
+            tf.logging.info(f"Loading best model from {best_model_file} (score: {best_score}).")
+            self.from_pretrained(best_model_file)
         return report
 
     def predict(self, set_type, output_names=None, total_steps=None,

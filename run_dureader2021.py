@@ -258,9 +258,13 @@ def main():
     )
     trainer.build_model(model_fn=get_model_fn(config, args))
     if args.do_train and train_dataset is not None:
+        # 训练阶段需要先compile优化器才能初始化权重
+        # 因为adam也是具备参数的
         trainer.compile()
-        trainer.from_pretrained(
-            args.model_dir if args.pretrained_checkpoint_path is None else args.pretrained_checkpoint_path)
+    trainer.from_pretrained(
+        args.model_dir if args.pretrained_checkpoint_path is None else args.pretrained_checkpoint_path)
+    if args.do_train and train_dataset is not None:
+        trainer.compile()
 
         # 训练过程中结果后处理需要传入的是验证examples
         trainer.train(
@@ -272,12 +276,12 @@ def main():
             logging_steps=args.logging_steps,
             saving_steps=args.saving_steps,
             greater_is_better=True,
+            load_best_model=True,
             metric_for_best_model='F1')
         config.save_pretrained(args.output_dir)
         tokenizer.save_pretrained(args.output_dir)
 
     if args.do_eval and dev_dataset is not None:
-        trainer.from_pretrained(args.output_dir)
         # 验证过程中结果后处理需要传入的是验证examples
         eval_outputs = trainer.evaluate(
             eval_dataset=dev_dataset,
@@ -289,7 +293,6 @@ def main():
         print(eval_outputs)
 
     if args.do_predict and predict_dataset is not None:
-        trainer.from_pretrained(args.output_dir)
         # 预测过程中结果后处理需要传入的是测试集examples
         outputs = trainer.predict(
             'test', dataset=predict_dataset,
