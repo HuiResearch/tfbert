@@ -264,7 +264,6 @@ def main():
     trainer.from_pretrained(
         args.model_dir if args.pretrained_checkpoint_path is None else args.pretrained_checkpoint_path)
     if args.do_train and train_dataset is not None:
-        trainer.compile()
 
         # 训练过程中结果后处理需要传入的是验证examples
         trainer.train(

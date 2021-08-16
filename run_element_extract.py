@@ -247,7 +247,6 @@ def main():
     trainer.from_pretrained(
         args.model_dir if args.pretrained_checkpoint_path is None else args.pretrained_checkpoint_path)
     if args.do_train and train_dataset is not None:
-        trainer.compile()
 
         trainer.train(
             output_dir=args.output_dir,
